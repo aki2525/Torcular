@@ -13,3 +13,7 @@
 #include <malloc.h>
 #include <memory.h>
 #include <tchar.h>
+#include <shellapi.h>
+#include <CommCtrl.h>
+#include <richedit.h>
+#include <shlwapi.h>
