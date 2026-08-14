@@ -1,5 +1,6 @@
 ﻿#include "Torcular.h"
 #include "Disasm6801.h"
+#include "LabelHandler.h"
 
 OpcodeInfo g_tblOpcode[ 256 ] = {
 	{ MNEM_UNKNOWN, 1, 0 }, // 0x00
@@ -518,12 +519,19 @@ BOOL CDisasm6801::DoDisasm( VOID )
 {
 BOOL bResult = FALSE;
 
-	bResult = ReadBinFile();
+	if ( m_pLabelHandler )
+		bResult = TRUE;
 	if ( bResult )
+		bResult = ReadBinFile();
+	if ( bResult ) {
+		m_pLabelHandler->Init();
 		DoPass1();
+	}
 	//CreateAsmFile();
 	//DoPass2();
 	//CloseFiles();
+	m_pLabelHandler->PrintCrossReferenceTable();
+
 	return bResult;
 }
 
@@ -542,17 +550,6 @@ DWORD dwAttr;
 		}
 	}
 	return bResult;
-}
-
-VOID CDisasm6801::DispError( VOID )
-{
-DWORD dwErr;
-LPVOID pMsgBuf;
-
-	dwErr = GetLastError();
-	FormatMessage( FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dwErr, MAKELANGID( LANG_NEUTRAL, SUBLANG_DEFAULT ), (PTSTR)&pMsgBuf, 0, NULL );
-	AddMessage( (PTSTR)pMsgBuf );
-	LocalFree( pMsgBuf );
 }
 
 BOOL CDisasm6801::ReadBinFile( VOID )
@@ -636,13 +633,13 @@ CHAR scOfs;
 				if ( byMode == MODE_RELATIVE ) {
 					scOfs = /*( signed char )*/( CHAR )pbyData[ m_dwAdr + 1 ];
 					dwAddr = ( DWORD )( m_dwStartAddress + m_dwAdr + dwLength + scOfs );
-					EntryLabel( dwAddr, m_dwAdr + m_dwStartAddress );
+					m_pLabelHandler->RegisterLabel( dwAddr, m_dwAdr + m_dwStartAddress );
 				} else if ( byMode == MODE_EXTENDED ) {
 					dwAddr = ( DWORD )( ( (DWORD)pbyData[ m_dwAdr + 1 ] << 8 ) | pbyData[ m_dwAdr + 2 ] );
-					EntryLabel( dwAddr, m_dwAdr + m_dwStartAddress );
+					m_pLabelHandler->RegisterLabel( dwAddr, m_dwAdr + m_dwStartAddress );
 				} else if ( byMode == MODE_DIRECT ) {
 					dwAddr = ( DWORD )pbyData[ m_dwAdr + 1 ];
-					EntryLabel( dwAddr, m_dwAdr + m_dwStartAddress );
+					m_pLabelHandler->RegisterLabel( dwAddr, m_dwAdr + m_dwStartAddress );
 				} else if ( byMode == MODE_INDEXED ) {
 					// JMP 0,X ... cannot calc address
 				}
@@ -676,6 +673,7 @@ VOID CDisasm6801::CloseFiles( VOID )
 VOID CDisasm6801::Init( VOID )
 {
 	ZeroMemory( m_tszBinPath, sizeof( m_tszBinPath ) );
+	m_pLabelHandler = new CLabelHandler;
 	m_hBin = nullptr;
 	m_pbyBin = nullptr;
 	m_dwStartAddress = 0xf000;

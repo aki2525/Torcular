@@ -30,12 +30,18 @@
     <ClInclude Include="Disasm6801.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="LabelHandler.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Torcular.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="Disasm6801.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="LabelHandler.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>

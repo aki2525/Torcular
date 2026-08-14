@@ -196,13 +196,26 @@ VOID AddMessage( PTSTR ptStr )
 CHARRANGE cr;
 
 	if ( g_hwndView ) {
-		SendMessage( g_hwndView, WM_SETREDRAW, FALSE, 0 );
-		cr.cpMin = cr.cpMax = -1; // 末尾
+		//SendMessage( g_hwndView, WM_SETREDRAW, FALSE, 0 );
+		cr.cpMin = -1;
+		cr.cpMax = -1;
 		SendMessage( g_hwndView, EM_EXSETSEL, 0, (LPARAM)&cr );
 		SendMessage( g_hwndView, EM_REPLACESEL, FALSE, (LPARAM)ptStr );
-		SendMessage( g_hwndView, WM_SETREDRAW, TRUE, 0 );
-		InvalidateRect( g_hwndView, NULL, TRUE );
+		//SendMessage( g_hwndView, WM_SETREDRAW, TRUE, 0 );
+		SendMessage( g_hwndView, EM_SCROLLCARET, 0, 0 );
+		//InvalidateRect( g_hwndView, NULL, TRUE );
 	}
+}
+
+VOID DispError( VOID )
+{
+DWORD dwErr;
+LPVOID pMsgBuf;
+
+	dwErr = GetLastError();
+	FormatMessage( FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dwErr, MAKELANGID( LANG_NEUTRAL, SUBLANG_DEFAULT ), (PTSTR)&pMsgBuf, 0, NULL );
+	AddMessage( (PTSTR)pMsgBuf );
+	LocalFree( pMsgBuf );
 }
 
 // -----------------------------------------------------------------------------------------------

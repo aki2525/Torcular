@@ -1,0 +1,60 @@
+#pragma once
+
+#define _CRT_SECURE_NO_WARNINGS
+#include "framework.h"
+
+#define _MAX_LABEL ( MAX_PATH )
+#define _MAX_ADDRESS ( 65536 )
+
+class CLabelHandler {
+public:
+	//struct XRefNode {
+	//	DWORD dwFromAddr;
+	//	XRefNode* pNext;
+
+	//	XRefNode( DWORD dwFrom, XRefNode* pNode = nullptr ) : dwFromAddr( dwFrom ), pNext( pNode ) {}
+	//};
+	struct LabelNode;
+	typedef LabelNode* PLabelNode;
+	struct LabelNode {
+		DWORD dwFromAddr;
+		PLabelNode pNext;
+
+		LabelNode( DWORD dwFrom, PLabelNode pNode = nullptr ) : dwFromAddr( dwFrom ), pNext( pNode ) {}
+	};
+
+	struct LabelInfo {
+		BOOL bTarget;
+		BOOL bUsed;	// Used in Pass2?( for test )
+		TCHAR tszLabel[ _MAX_LABEL ];
+		PLabelNode pLabelList;
+
+		LabelInfo() : bTarget( FALSE ), bUsed( FALSE ), pLabelList( nullptr ) {
+			tszLabel[ 0 ] = '\0';
+		}
+	};
+
+public:
+	CLabelHandler();
+	~CLabelHandler();
+
+	VOID Init();
+
+// for pass 1
+	VOID RegisterLabel( DWORD dwAddr, DWORD dwFromAddr );
+	VOID RegisterDWLabel( PBYTE pbyData, DWORD dwPC, DWORD dwAddr ); // for DW
+
+	VOID SetLabelName( DWORD dwAddr, PTSTR ptszName );
+
+// for pass 2
+	VOID PrintLabelIfExists( DWORD dwAddr );
+	VOID PrintCrossReferenceTable( VOID );
+//
+	PTSTR GetLabelName( DWORD dwAddr );
+	BOOL hasLabel( DWORD dwAddr );
+	BOOL ExportLabelsToFile( PTSTR ptszFilename );
+	BOOL ImportLabelsFromFile( PTSTR ptszFilename );
+private:
+	LabelInfo m_labels[ _MAX_ADDRESS ];
+};
+

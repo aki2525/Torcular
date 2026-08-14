@@ -4,3 +4,5 @@
 #include "Disasm6801.h"
 
 VOID AddMessage( PTSTR ptStr );
+VOID DispError( VOID );
+

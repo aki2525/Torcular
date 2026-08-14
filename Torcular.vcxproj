@@ -129,6 +129,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="LabelHandler.h" />
     <ClInclude Include="Disasm6801.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Resource.h" />
@@ -136,6 +137,7 @@
     <ClInclude Include="Torcular.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="LabelHandler.cpp" />
     <ClCompile Include="Disasm6801.cpp" />
     <ClCompile Include="Torcular.cpp" />
   </ItemGroup>

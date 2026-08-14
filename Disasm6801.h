@@ -1,6 +1,8 @@
 #pragma once
+
 #define _CRT_SECURE_NO_WARNINGS
 #include "framework.h"
+#include "LabelHandler.h"
 
 #define MODE_MASK	0x07
 #define MODE_INHERENT	0	// inherent ... opcode only
@@ -197,8 +199,9 @@ public:
 	BOOL CreateAsmFile( VOID );
 	BOOL DoPass2( VOID );
 	VOID CloseFiles( VOID );
-	VOID DispError( VOID );
 	VOID Init( VOID );
+
+	CLabelHandler* m_pLabelHandler;
 private:
 	TCHAR m_tszBinPath[ MAX_PATH * 2 ];
 	HGLOBAL m_hBin;
