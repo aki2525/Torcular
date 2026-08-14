@@ -14,6 +14,7 @@ TCHAR g_tszTitle[ MAX_PATH ];
 TCHAR g_tszWindowClass[ MAX_PATH ];
 HWND g_hwndView = NULL;
 LONG g_lClientX, g_lClientY;
+CDisasm6801* g_pThis = nullptr;
 
 // Locals...
 ATOM MyRegisterClass( HINSTANCE hInstance );
@@ -21,7 +22,6 @@ BOOL InitInstance( HINSTANCE hInstance, INT nCmdShow );
 LRESULT CALLBACK WndProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
 INT_PTR CALLBACK About( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
 BOOL GetOption( VOID );
-VOID AddMesssage( PTSTR ptStr );
 
 INT APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR pCmdLine, _In_ INT nCmdShow )
 {
@@ -123,7 +123,9 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 	switch( uMsg ) {
 	case WM_CREATE:
 		g_hwndView = CreateWindowExW( 0, MSFTEDIT_CLASS/*RICHEDIT_CLASS*/, L"", ES_MULTILINE | ES_NOHIDESEL | ES_AUTOVSCROLL | ES_AUTOHSCROLL | WS_CHILD | WS_BORDER | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL, CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, hWnd, ( HMENU )IDC_VIEW, g_hInstance, nullptr);
-		GetOption();
+		g_pThis = new CDisasm6801;
+		if ( g_pThis )
+			PostMessage( hWnd, WM_COMMAND, IDM_HERE_WE_GO, 0 );
 		break;
 	case WM_SIZE:
 		g_lClientX = LOWORD( lParam );
@@ -132,6 +134,8 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 		break;
 	case WM_COMMAND: {
 	INT wmId;
+	BOOL bReady = FALSE;
+
 		wmId = LOWORD( wParam );
 		switch( wmId ) {
 		case IDM_ABOUT:
@@ -139,6 +143,11 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 			break;
 		case IDM_EXIT:
 			DestroyWindow( hWnd );
+			break;
+		case IDM_HERE_WE_GO:
+			bReady = GetOption();
+			if ( bReady )
+				g_pThis->DoDisasm();
 			break;
 		default:
 			return DefWindowProc( hWnd, uMsg, wParam, lParam );
@@ -182,7 +191,7 @@ UNREFERENCED_PARAMETER( lParam );
 	return (INT_PTR)FALSE;
 }
 
-VOID AddMesssage( PTSTR ptStr )
+VOID AddMessage( PTSTR ptStr )
 {
 CHARRANGE cr;
 
@@ -264,7 +273,7 @@ TCHAR tsz0[ MAX_PATH ];
 	GetModuleFileName( NULL, tsz0, sizeof( tsz0 ) );
 	PathStripPath( tsz0 );
 	wsprintf( tsz, _T( "Usage : %s - input bin6801.bin" ), tsz0 );
-	AddMesssage( tsz );
+	AddMessage( tsz );
 }
 
 BOOL GetOption( VOID )
@@ -296,15 +305,17 @@ BOOL bUsage = FALSE;
 
 		if ( isOption( pArgvA[ i ], OPT_INPUT ) ) {
 			if ( ( i + 1 ) < iArgcW ) {
-				inputFile = pArgvA[ ++i ];
-				bResult = TRUE;
+				if ( g_pThis ) {
+					bResult = g_pThis->SetBinFile( pArgvA[ ++i ] );
+				}
 			}
 			continue;
 		}
 
 		if ( ( pArgvA[ i ][ 0 ] != '-' ) && ( pArgvA[ i ][ 0 ] != '/' ) ) {
-			inputFile = pArgvA[ i ];
-			bResult = TRUE;
+			if ( g_pThis ) {
+				bResult = g_pThis->SetBinFile( pArgvA[ i ] );
+			}
 			continue;
 		}
 	}
@@ -320,6 +331,6 @@ BOOL bUsage = FALSE;
 	free( pArgvA );
 	LocalFree( pArgvW );
 
-	return 0;
+	return bResult;
 }
 

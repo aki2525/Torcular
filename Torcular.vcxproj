@@ -129,12 +129,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Disasm6801.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="Torcular.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Disasm6801.cpp" />
     <ClCompile Include="Torcular.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -1,0 +1,212 @@
+#pragma once
+#define _CRT_SECURE_NO_WARNINGS
+#include "framework.h"
+
+#define MODE_MASK	0x07
+#define MODE_INHERENT	0	// inherent ... opcode only
+#define MODE_IMMEDIATE	1	// immediate(#$xx)
+#define MODE_DIRECT		2	// direct($xx)
+#define MODE_EXTENDED	3	// extended($xxxx)
+#define MODE_INDEXED	4	// index($xx,X)
+#define MODE_RELATIVE	5	// relative($xx)
+
+// --- opcode mode flag( Bit 7 & Bit 6 ) ---
+#define FL_VALID ( 1 << 7 ) // 0x80: valid
+#define FL_JUMP ( 1 << 6 ) // 0x40: need calc address(jump or branch)
+
+
+#if 0
+typedef enum {
+	MNEM_UNKNOWN = 0,
+	MNEM_ABA,  MNEM_ABX,  MNEM_ADCA, MNEM_ADCB, MNEM_ADDA, MNEM_ADDB, MNEM_ADDD,
+	MNEM_ANDA, MNEM_ANDB, MNEM_ASL,  MNEM_ASLA, MNEM_ASLB, MNEM_ASLD, MNEM_ASR,
+	MNEM_ASRA, MNEM_ASRB, MNEM_BCC,  MNEM_BCS,  MNEM_BEQ,  MNEM_BGE,  MNEM_BGT,
+	MNEM_BHI,  MNEM_BITA, MNEM_BITB, MNEM_BLE,  MNEM_BLS,  MNEM_BLT,  MNEM_BMI,
+	MNEM_BNE,  MNEM_BPL,  MNEM_BRA,  MNEM_BRN,  MNEM_BSR,  MNEM_BVC,  MNEM_BVS,
+	MNEM_CBA,  MNEM_CLC,  MNEM_CLI,  MNEM_CLR,  MNEM_CLRA, MNEM_CLRB, MNEM_CMPA,
+	MNEM_CMPB, MNEM_COMA, MNEM_COMB, MNEM_COM,  MNEM_CPX,  MNEM_DAA,  MNEM_DEC,
+	MNEM_DECA, MNEM_DECB, MNEM_DEX,  MNEM_DES,  MNEM_EORA, MNEM_EORB, MNEM_INC,
+	MNEM_INCA, MNEM_INCB, MNEM_INS,  MNEM_INX,  MNEM_JMP,  MNEM_JSR,  MNEM_LDAA,
+	MNEM_LDAB, MNEM_LDD,  MNEM_LDS,  MNEM_LDX,  MNEM_LSR,  MNEM_LSRA, MNEM_LSRB,
+	MNEM_LSRD, MNEM_MUL,  MNEM_NEG,  MNEM_NEGA, MNEM_NEGB, MNEM_NOP,  MNEM_ORAA,
+	MNEM_ORAB, MNEM_PSHA, MNEM_PSHB, MNEM_PSHX, MNEM_PULA, MNEM_PULB, MNEM_PULX,
+	MNEM_ROL,  MNEM_ROLA, MNEM_ROLB, MNEM_ROR,  MNEM_RORA, MNEM_RORB, MNEM_RTI,
+	MNEM_RTS,  MNEM_SBA,  MNEM_SBCA, MNEM_SBCB, MNEM_SEC,  MNEM_SEI,  MNEM_STAA,
+	MNEM_STAB, MNEM_STD,  MNEM_STS,  MNEM_STX,  MNEM_SUBA, MNEM_SUBB, MNEM_SUBD,
+	MNEM_SWI,  MNEM_TAB,  MNEM_TBA,  MNEM_TST,  MNEM_TSTA, MNEM_TSTB, MNEM_TSX,
+	MNEM_TXS,  MNEM_WAI,  MNEM_XGDX,
+	MNEM_COUNT
+} MnemonicID;
+#else
+typedef enum {
+	MNEM_UNKNOWN = 0, // 0x00
+	MNEM_NOP, // 0x01
+	MNEM_LSRD, // 0x04
+	MNEM_ASLD, // 0x05
+	MNEM_INX, // 0x08
+	MNEM_DEX, // 0x09
+	MNEM_CLRA, // 0x0A
+	MNEM_CLRB, // 0x0B
+	MNEM_CLC, // 0x0C
+	MNEM_SEC, // 0x0D
+	MNEM_CLI, // 0x0E
+	MNEM_SEI, // 0x0F
+	MNEM_SBA, // 0x10
+	MNEM_CBA, // 0x11
+	MNEM_TAB, // 0x16
+	MNEM_TBA, // 0x17
+	MNEM_XGDX, // 0x18
+	MNEM_DAA, // 0x19
+	MNEM_ABA, // 0x1B
+	MNEM_BRA, // 0x20
+	MNEM_BRN, // 0x21
+	MNEM_BHI, // 0x22
+	MNEM_BLS, // 0x23
+	MNEM_BCC, // 0x24
+	MNEM_BCS, // 0x25
+	MNEM_BNE, // 0x26
+	MNEM_BEQ, // 0x27
+	MNEM_BVC, // 0x28
+	MNEM_BVS, // 0x29
+	MNEM_BPL, // 0x2A
+	MNEM_BMI, // 0x2B
+	MNEM_BGE, // 0x2C
+	MNEM_BLT, // 0x2D
+	MNEM_BGT, // 0x2E
+	MNEM_BLE, // 0x2F
+	MNEM_TSX, // 0x30
+	MNEM_INS, // 0x31
+	MNEM_PULA, // 0x32
+	MNEM_PULB, // 0x33
+	MNEM_DES, // 0x34
+	MNEM_TXS, // 0x35
+	MNEM_PSHA, // 0x36
+	MNEM_PSHB, // 0x37
+	MNEM_PULX, // 0x38
+	MNEM_RTS, // 0x39
+	MNEM_ABX, // 0x3A
+	MNEM_RTI, // 0x3B
+	MNEM_PSHX, // 0x3C
+	MNEM_MUL, // 0x3D
+	MNEM_WAI, // 0x3E
+	MNEM_SWI, // 0x3F
+	MNEM_NEGA, // 0x40
+	MNEM_COMA, // 0x43
+	MNEM_LSRA, // 0x44
+	MNEM_RORA, // 0x46
+	MNEM_ASRA, // 0x47
+	MNEM_ASLA, // 0x48
+	MNEM_ROLA, // 0x49
+	MNEM_DECA, // 0x4A
+	MNEM_INCA, // 0x4C
+	MNEM_TSTA, // 0x4D
+	MNEM_NEGB, // 0x50
+	MNEM_COMB, // 0x53
+	MNEM_LSRB, // 0x54
+	MNEM_RORB, // 0x56
+	MNEM_ASRB, // 0x57
+	MNEM_ASLB, // 0x58
+	MNEM_ROLB, // 0x59
+	MNEM_DECB, // 0x5A
+	MNEM_INCB, // 0x5C
+	MNEM_TSTB, // 0x5D
+	MNEM_NEG, // 0x60
+	MNEM_COM, // 0x63
+	MNEM_LSR, // 0x64
+	MNEM_ROR, // 0x66
+	MNEM_ASR, // 0x67
+	MNEM_ASL, // 0x68
+	MNEM_ROL, // 0x69
+	MNEM_DEC, // 0x6A
+	MNEM_INC, // 0x6C
+	MNEM_TST, // 0x6D
+	MNEM_JMP, // 0x6E
+	MNEM_CLR, // 0x6F
+	MNEM_SUBA, // 0x80
+	MNEM_CMPA, // 0x81
+	MNEM_SBCA, // 0x82
+	MNEM_SUBD, // 0x83
+	MNEM_ANDA, // 0x84
+	MNEM_BITA, // 0x85
+	MNEM_LDAA, // 0x86
+	MNEM_EORA, // 0x88
+	MNEM_ADCA, // 0x89
+	MNEM_ORAA, // 0x8A
+	MNEM_ADDA, // 0x8B
+	MNEM_CPX, // 0x8C
+	MNEM_BSR, // 0x8D
+	MNEM_LDS, // 0x8E
+	MNEM_STAA, // 0x97
+	MNEM_JSR, // 0x9D
+	MNEM_STS, // 0x9F
+	MNEM_SUBB, // 0xC0
+	MNEM_CMPB, // 0xC1
+	MNEM_SBCB, // 0xC2
+	MNEM_ADDD, // 0xC3
+	MNEM_ANDB, // 0xC4
+	MNEM_BITB, // 0xC5
+	MNEM_LDAB, // 0xC6
+	MNEM_EORB, // 0xC8
+	MNEM_ADCB, // 0xC9
+	MNEM_ORAB, // 0xCA
+	MNEM_ADDB, // 0xCB
+	MNEM_LDD, // 0xCC
+	MNEM_LDX, // 0xCE
+	MNEM_STAB, // 0xD7
+	MNEM_STD, // 0xDD
+	MNEM_STX, // 0xDF
+	MNEM_MAX
+} MnemonicID;
+#endif
+
+typedef struct {
+	BYTE byMnemonicId;
+	BYTE byLength; // opcode bytes
+	BYTE byAttr; // addressing mode( 3bit ) + FL_VALID( 1bit ) + FL_JUMP( 1bit )
+} OpcodeInfo;
+
+//const OpcodeInfo* get_opcode_info(uint8_t opcode);
+
+static inline BYTE GetMode( const OpcodeInfo *info ) {
+	return info->byAttr & MODE_MASK;
+}
+
+static inline bool isValid( const OpcodeInfo *info ) {
+	return ( info->byAttr & FL_VALID ) != 0;
+}
+
+static inline bool isJump( const OpcodeInfo *info ) {
+	return ( info->byAttr & FL_JUMP ) != 0;
+}
+
+
+//const OpcodeInfo* get_opcode_info(uint8_t opcode) {
+//    return &OPCODE_TABLE[opcode];
+//}
+
+class CDisasm6801 {
+public:
+	CDisasm6801();
+	~CDisasm6801();
+//
+	BOOL DoDisasm();
+	BOOL SetBinFile( PTSTR ptBinFile );
+	BOOL ReadBinFile( VOID );
+	BOOL ReadLabelFile( VOID );
+	BOOL DoPass1( VOID );
+	BOOL CreateAsmFile( VOID );
+	BOOL DoPass2( VOID );
+	VOID CloseFiles( VOID );
+	VOID DispError( VOID );
+	VOID Init( VOID );
+private:
+	TCHAR m_tszBinPath[ MAX_PATH * 2 ];
+	HGLOBAL m_hBin;
+	PBYTE m_pbyBin;
+	DWORD m_dwSizeBin;
+	DWORD m_dwPC;
+	DWORD m_dwAdr; // in m_pbyBin
+//
+	DWORD m_dwStartAddress;
+};
+
