@@ -99,6 +99,8 @@ public:
 private:
 #ifdef _SUPPORT_LABEL_ALIAS
 	BOOL AddLabelAlias( DWORD dwAddr, PCTSTR pctszLabel, BOOL bAtHead = FALSE );
+	BOOL ExportAddressLabels( HANDLE hFile, DWORD dwAddr );
+	VOID ProcessImportedLabel( DWORD dwAddr, PCSTR pcszBufName );
 #endif
 	LabelInfo m_labels[ _MAX_ADDRESS ];
 };

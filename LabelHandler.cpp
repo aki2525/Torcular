@@ -128,6 +128,40 @@ BOOL CLabelHandler::hasLabel( DWORD dwAddr )
 	return m_labels[ dwAddr ].bTarget;
 }
 
+#ifdef _SUPPORT_LABEL_ALIAS
+BOOL CLabelHandler::ExportAddressLabels( HANDLE hFile, DWORD dwAddr )
+{
+BOOL bResult = FALSE;
+TCHAR tsz[ MAX_PATH * 3 ];
+DWORD dwWrite, dwWritten;
+PLabelNameNode pNode;
+
+	if ( dwAddr >= _MAX_ADDRESS )
+		return bResult;
+
+	bResult = TRUE;
+	pNode = m_labels[ dwAddr ].pAliasList;
+	while ( pNode != nullptr ) {
+		if ( pNode->tszName[ 0 ] != _T( '\0' ) ) {
+			wsprintf( tsz, _T( "$%04X : %s\r\n" ), dwAddr, pNode->tszName );
+			dwWrite = (DWORD)_tcslen( tsz );
+			if ( !WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL ) ) {
+				bResult = FALSE;
+			}
+			if ( dwWrite != dwWritten ) {
+				bResult = FALSE;
+			}
+			if ( !bResult ) {
+				DispError();
+				break;
+			}
+		}
+		pNode = pNode->pNext;
+	}
+	return bResult;
+}
+#endif
+
 BOOL CLabelHandler::ExportLabelsToFile( PTSTR ptszFilename )
 {
 BOOL bResult = FALSE;
@@ -156,6 +190,7 @@ HANDLE hFile;
 		if ( !bResult )
 			break;
 		if ( m_labels[ i ].bTarget ) {
+#ifndef _SUPPORT_LABEL_ALIAS
 			wsprintf( tsz, "$%04X : %s\r\n", i, m_labels[ i ].tszLabel );
 			dwWrite = (DWORD)_tcslen( tsz );
 			WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL );
@@ -163,12 +198,35 @@ HANDLE hFile;
 				DispError();
 				bResult = FALSE;
 			}
+#else
+			bResult = ExportAddressLabels( hFile, i );
+#endif
 		}
 	}
 	if ( hFile )
 		CloseHandle( hFile );
 	return bResult;
 }
+
+#ifdef _SUPPORT_LABEL_ALIAS
+VOID CLabelHandler::ProcessImportedLabel( DWORD dwAddr, PCSTR pcszBufName )
+{
+	if ( dwAddr >= _MAX_ADDRESS )
+		return;
+	if ( !pcszBufName )
+		return;
+	if ( !pcszBufName[ 0 ] == '\0' )
+		return;
+
+#ifdef UNICODE
+	TCHAR tszName[ _MAX_LABEL ];
+	MultiByteToWideChar( CP_ACP, 0, pcszBufName, -1, tszName, _MAX_LABEL );
+	AddLabelName( dwAddr, tszName, FALSE );
+#else
+	AddLabelAlias( dwAddr, pcszBufName, FALSE );
+#endif
+}
+#endif
 
 BOOL CLabelHandler::ImportLabelsFromFile( PTSTR ptszFilename )
 {
@@ -182,7 +240,7 @@ PCHAR pBuffer = NULL, p;
 HANDLE hFile;
 HGLOBAL hGlobal = NULL;
 
-	if ( ptszFilename )
+	if ( !ptszFilename )
 		return bResult;
 
 	hFile = CreateFile( ptszFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
@@ -475,17 +533,24 @@ PLabelNode pCurr;
 	WriteString( tsz );
 	wsprintf( tsz, _T( "========================================\r\n" ) );
 	WriteString( tsz );
-	wsprintf( tsz, _T( "Label       Referenced From             \r\n" ) );
+#ifndef _SUPPORT_LABEL_ALIAS
+	wsprintf( tsz, _T( "Label (Aliases)        Referenced From\r\n" ) );
 	WriteString( tsz );
 	wsprintf( tsz, _T( "----------------------------------------\r\n" ) );
+#else
+	wsprintf( tsz, _T( "Label (Aliases)                           Referenced From\r\n" ) );
+	WriteString( tsz );
+	wsprintf( tsz, _T( "------------------------------------------------------------------------\r\n" ) );
+#endif
 	WriteString( tsz );
 
 	lCnt = 0;
 	for ( i = 0; i < _MAX_ADDRESS; i++ ) {
 		if ( m_labels[ i ].bTarget ) {
+#ifndef _SUPPORT_LABEL_ALIAS
 			lCnt++;
 			bFound = TRUE;
-			wsprintf( tsz, _T( "%-12s : " ), m_labels[ i ].tszLabel );
+			wsprintf( tsz, _T( "%-20s : " ), m_labels[ i ].tszLabel );
 			WriteString( tsz );
 
 			if ( !m_labels[ i ].bUsed ) {
@@ -508,8 +573,62 @@ PLabelNode pCurr;
 					}
 				}
 			}
-			wsprintf( tsz, _T( "\n" ) );
+			wsprintf( tsz, _T( "\r\n" ) );
 			WriteString( tsz );
+#else
+			if ( m_labels[ i ].pAliasList != nullptr ) {
+				lCnt++;
+				bFound = TRUE;
+
+				// 1. 代表ラベル名を出力
+				PLabelNameNode pPrimary = m_labels[ i ].pAliasList;
+				wsprintf( tsz, _T( "%-12s : " ), pPrimary->tszName );
+				WriteString( tsz );
+
+				// 2. 未到達警告の出力
+				if ( !m_labels[ i ].bUsed ) {
+					wsprintf( tsz, _T( " [WARNING: Unreached Address] " ) );
+					WriteString( tsz );
+				}
+
+				// 3. 参照元 (XRef) アドレス一覧の出力
+				pCurr = m_labels[ i ].pLabelList;
+				if ( pCurr == NULL ) {
+					wsprintf( tsz, _T( "(None)" ) );
+					WriteString( tsz );
+				} else {
+					while ( pCurr != NULL ) {
+						wsprintf( tsz, _T( "$%04X" ), pCurr->dwFromAddr );
+						WriteString( tsz );
+						pCurr = pCurr->pNext;
+						if ( pCurr != NULL ) {
+							wsprintf( tsz, _T( ", " ) );
+							WriteString( tsz );
+						}
+					}
+				}
+				wsprintf( tsz, _T( "\r\n" ) );
+				WriteString( tsz );
+
+				// 4. エイリアスが存在する場合、インデントしてアドレスとエイリアス一覧を出力
+				PLabelNameNode pAlias = pPrimary->pNext;
+				if ( pAlias != nullptr ) {
+					wsprintf( tsz, _T( "  [ =$%04X: " ), i );
+					WriteString( tsz );
+					while ( pAlias != nullptr ) {
+						wsprintf( tsz, _T( "%s" ), pAlias->tszName );
+						WriteString( tsz );
+						pAlias = pAlias->pNext;
+						if ( pAlias != nullptr ) {
+							wsprintf( tsz, _T( ", " ) );
+							WriteString( tsz );
+						}
+					}
+					wsprintf( tsz, _T( " ]\r\n" ) );
+					WriteString( tsz );
+				}
+			}
+#endif
 		}
 	}
 
