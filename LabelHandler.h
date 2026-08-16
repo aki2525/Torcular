@@ -6,6 +6,17 @@
 #define _MAX_LABEL ( MAX_PATH )
 #define _MAX_ADDRESS ( 65536 )
 
+enum LABEL_KIND {
+	_KIND_NORMAL,
+	_KIND_JUMP,
+	_KIND_EXTENDED,
+	_KIND_DIRECT,
+	_KIND_INDEXED,
+	_KIND_DW,
+	_KIND_VECTOR,
+	_KIND_MAX,
+};
+
 class CLabelHandler {
 public:
 	struct LabelNode;
@@ -35,9 +46,9 @@ public:
 	VOID Init();
 
 // for pass 1
-	VOID RegisterLabel( DWORD dwAddr, DWORD dwFromAddr );
+	VOID RegisterLabel( LABEL_KIND lkKind, DWORD dwAddr, DWORD dwFromAddr );
 	VOID RegisterDWLabel( PBYTE pbyData, DWORD dwPC, DWORD dwAddr ); // for DW
-	VOID RegisterVector( PBYTE pbyData, DWORD dwBaseAddr, DWORD dwVectorAddr, PTSTR ptszVectorName  = nullptr );
+	VOID RegisterVector( PBYTE pbyData, DWORD dwBaseAddr, DWORD dwVectorAddr, PTSTR ptszVectorName = nullptr );
 
 	VOID SetLabelName( DWORD dwAddr, PTSTR ptszName );
 
@@ -46,7 +57,7 @@ public:
 	VOID PrintCrossReferenceTable( VOID );
 	BOOL TouchUsedAddr( DWORD dwAddr );
 	BOOL ViewReference( DWORD dwAddr );
-	BOOL ViewLabel( DWORD dwAddr );
+	PTSTR GetLabel( DWORD dwAddr );
 //
 	PTSTR GetLabelName( DWORD dwAddr );
 	BOOL hasLabel( DWORD dwAddr );

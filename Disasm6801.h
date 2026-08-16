@@ -4,51 +4,38 @@
 #include "framework.h"
 #include "LabelHandler.h"
 
-#define MODE_MASK	0x07
-#define MODE_INHERENT	0	// inherent ... opcode only
-#define MODE_IMMEDIATE	1	// immediate(#$xx)
-#define MODE_DIRECT		2	// direct($xx)
-#define MODE_EXTENDED	3	// extended($xxxx)
-#define MODE_INDEXED	4	// index($xx,X)
-#define MODE_RELATIVE	5	// relative($xx)
 
-// --- opcode mode flag( Bit 7 & Bit 6 ) ---
-#define FL_VALID ( 1 << 7 ) // 0x80: valid
-#define FL_JUMP ( 1 << 6 ) // 0x40: need calc address(jump or branch)
+enum AddressingMode {
+	MODE_INVALID = 0,
+	MODE_INHERENT, // inherent ... opcode only
+	MODE_IMMEDIATE, // immediate(#$xx)
+	MODE_DIRECT, // direct($xx)
+	MODE_INDEXED, // extended($xxxx)
+	MODE_EXTENDED, // index($xx,X)
+	MODE_RELATIVE // relative($xx)
+};
 
+enum OperandType {
+	OPTYPE_NONE = 0,
+	OPTYPE_IMM8,
+	OPTYPE_IMM16,
+	OPTYPE_DIRECT8,
+	OPTYPE_INDEX_X,
+	OPTYPE_ADDR16,
+	OPTYPE_REL8
+};
 
-#if 0
-typedef enum {
-	MNEM_UNKNOWN = 0,
-	MNEM_ABA,  MNEM_ABX,  MNEM_ADCA, MNEM_ADCB, MNEM_ADDA, MNEM_ADDB, MNEM_ADDD,
-	MNEM_ANDA, MNEM_ANDB, MNEM_ASL,  MNEM_ASLA, MNEM_ASLB, MNEM_ASLD, MNEM_ASR,
-	MNEM_ASRA, MNEM_ASRB, MNEM_BCC,  MNEM_BCS,  MNEM_BEQ,  MNEM_BGE,  MNEM_BGT,
-	MNEM_BHI,  MNEM_BITA, MNEM_BITB, MNEM_BLE,  MNEM_BLS,  MNEM_BLT,  MNEM_BMI,
-	MNEM_BNE,  MNEM_BPL,  MNEM_BRA,  MNEM_BRN,  MNEM_BSR,  MNEM_BVC,  MNEM_BVS,
-	MNEM_CBA,  MNEM_CLC,  MNEM_CLI,  MNEM_CLR,  MNEM_CLRA, MNEM_CLRB, MNEM_CMPA,
-	MNEM_CMPB, MNEM_COMA, MNEM_COMB, MNEM_COM,  MNEM_CPX,  MNEM_DAA,  MNEM_DEC,
-	MNEM_DECA, MNEM_DECB, MNEM_DEX,  MNEM_DES,  MNEM_EORA, MNEM_EORB, MNEM_INC,
-	MNEM_INCA, MNEM_INCB, MNEM_INS,  MNEM_INX,  MNEM_JMP,  MNEM_JSR,  MNEM_LDAA,
-	MNEM_LDAB, MNEM_LDD,  MNEM_LDS,  MNEM_LDX,  MNEM_LSR,  MNEM_LSRA, MNEM_LSRB,
-	MNEM_LSRD, MNEM_MUL,  MNEM_NEG,  MNEM_NEGA, MNEM_NEGB, MNEM_NOP,  MNEM_ORAA,
-	MNEM_ORAB, MNEM_PSHA, MNEM_PSHB, MNEM_PSHX, MNEM_PULA, MNEM_PULB, MNEM_PULX,
-	MNEM_ROL,  MNEM_ROLA, MNEM_ROLB, MNEM_ROR,  MNEM_RORA, MNEM_RORB, MNEM_RTI,
-	MNEM_RTS,  MNEM_SBA,  MNEM_SBCA, MNEM_SBCB, MNEM_SEC,  MNEM_SEI,  MNEM_STAA,
-	MNEM_STAB, MNEM_STD,  MNEM_STS,  MNEM_STX,  MNEM_SUBA, MNEM_SUBB, MNEM_SUBD,
-	MNEM_SWI,  MNEM_TAB,  MNEM_TBA,  MNEM_TST,  MNEM_TSTA, MNEM_TSTB, MNEM_TSX,
-	MNEM_TXS,  MNEM_WAI,  MNEM_XGDX,
-	MNEM_COUNT
-} MnemonicID;
-#else
-typedef enum {
-	MNEM_UNKNOWN = 0, // 0x00
+enum MnemonicID {
+	MNEM_INVALID = 0, // 0x00
 	MNEM_NOP, // 0x01
 	MNEM_LSRD, // 0x04
 	MNEM_ASLD, // 0x05
+	MNEM_TAP, // 0x06
+	MNEM_TPA, // 0x07
 	MNEM_INX, // 0x08
 	MNEM_DEX, // 0x09
-	MNEM_CLRA, // 0x0A
-	MNEM_CLRB, // 0x0B
+	MNEM_CLV, // 0x0A
+	MNEM_SEV, // 0x0B
 	MNEM_CLC, // 0x0C
 	MNEM_SEC, // 0x0D
 	MNEM_CLI, // 0x0E
@@ -57,8 +44,9 @@ typedef enum {
 	MNEM_CBA, // 0x11
 	MNEM_TAB, // 0x16
 	MNEM_TBA, // 0x17
-	MNEM_XGDX, // 0x18
+// 0x18, XGDX ... not implemented in MC6801V0
 	MNEM_DAA, // 0x19
+// 01A, SLP ... not implemented in MC6801V0
 	MNEM_ABA, // 0x1B
 	MNEM_BRA, // 0x20
 	MNEM_BRN, // 0x21
@@ -102,6 +90,7 @@ typedef enum {
 	MNEM_DECA, // 0x4A
 	MNEM_INCA, // 0x4C
 	MNEM_TSTA, // 0x4D
+	MNEM_CLRA, // 0x4F
 	MNEM_NEGB, // 0x50
 	MNEM_COMB, // 0x53
 	MNEM_LSRB, // 0x54
@@ -112,6 +101,7 @@ typedef enum {
 	MNEM_DECB, // 0x5A
 	MNEM_INCB, // 0x5C
 	MNEM_TSTB, // 0x5D
+	MNEM_CLRB, // 0x5F
 	MNEM_NEG, // 0x60
 	MNEM_COM, // 0x63
 	MNEM_LSR, // 0x64
@@ -156,35 +146,15 @@ typedef enum {
 	MNEM_LDX, // 0xCE
 	MNEM_STAB, // 0xD7
 	MNEM_STD, // 0xDD
-	MNEM_STX, // 0xDF
-	MNEM_MAX
-} MnemonicID;
-#endif
+	MNEM_STX // 0xDF
+};
 
 typedef struct {
 	BYTE byMnemonicId;
 	BYTE byLength; // opcode bytes
-	BYTE byAttr; // addressing mode( 3bit ) + FL_VALID( 1bit ) + FL_JUMP( 1bit )
-} OpcodeInfo;
-
-//const OpcodeInfo* get_opcode_info(uint8_t opcode);
-
-static inline BYTE GetMode( const OpcodeInfo *info ) {
-	return info->byAttr & MODE_MASK;
-}
-
-static inline bool isValid( const OpcodeInfo *info ) {
-	return ( info->byAttr & FL_VALID ) != 0;
-}
-
-static inline bool isJump( const OpcodeInfo *info ) {
-	return ( info->byAttr & FL_JUMP ) != 0;
-}
-
-
-//const OpcodeInfo* get_opcode_info(uint8_t opcode) {
-//    return &OPCODE_TABLE[opcode];
-//}
+	BYTE byMode; // addressing mode( 3bit ) + FL_VALID( 1bit ) + FL_JUMP( 1bit )
+	BYTE byType; // OperandType
+} OpcodeInfo, *POpcodeInfo;
 
 class CDisasm6801 {
 public:
@@ -211,11 +181,14 @@ private:
 	PBYTE m_pbyBin;
 	DWORD m_dwSizeBin;
 	//DWORD m_dwPC;
-	DWORD m_dwAdr; // in m_pbyBin
+	//DWORD m_dwAdr; // in m_pbyBin
 // Mode / Options
 	BOOL m_bViewCrossReference;
 	BOOL m_bNoPass2;
 	BOOL m_bViewReferencedFrom;
+	BOOL m_bViewMachineCode;
+	UINT m_uiTab;
+	BOOL m_bViewAddress;
 //
 	DWORD m_dwStartAddress;
 };

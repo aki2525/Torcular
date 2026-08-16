@@ -219,6 +219,93 @@ CHARRANGE cr;
 	}
 }
 
+BOOL CutLastSpace( PTSTR ptszStr, INT iSize )
+{
+INT i, iLen;
+BOOL bResult = FALSE;
+
+	if ( !ptszStr )
+		return bResult;
+
+	iLen = (INT)_tcslen( ptszStr );
+
+	for ( i = iLen - 1; i >= 0; i-- ) {
+		if ( ( ptszStr[ i ] != _T( ' ' ) ) && ( ptszStr[ i ] != _T( '\t' ) ) ) {
+			break;
+		}
+	}
+	if ( iSize >= i + 1 )
+		ptszStr[ i + 1 ] = '\0';
+
+	return bResult;
+}
+
+BOOL ConvertToUseTab( PTSTR ptszStr, UINT uiSizeTab )
+{
+BOOL bResult = FALSE;
+UINT uiColumn, uiCntSpc, uiNeed, uiUsed, uiNextTab;
+PTSTR ptSrc, ptDst, ptTmp;
+
+	if ( !ptszStr )
+        return bResult;
+	if ( !uiSizeTab )
+        return bResult;
+
+	bResult = TRUE;
+	uiColumn = 0;
+	ptSrc = ptszStr;
+	ptDst = ptszStr;
+
+	while( *ptSrc ) {
+		if ( *ptSrc == _T( '\r' ) ) {
+			*ptDst++ = *ptSrc++;
+			continue;
+		}
+		if ( *ptSrc == _T( '\n' ) ) {
+			*ptDst++ = *ptSrc++;
+			continue;
+		}
+		if ( *ptSrc == _T( ' ' ) ) {
+			ptTmp = ptSrc;
+			uiCntSpc = 0;
+			while ( *ptTmp == _T( ' ' ) ) {
+				uiCntSpc++;
+				ptTmp++;
+			}
+			uiUsed = 0;
+			while ( uiUsed < uiCntSpc ) {
+				uiNextTab = ( ( uiColumn / uiSizeTab ) + 1 ) * uiSizeTab;
+				uiNeed = uiNextTab - uiColumn;
+				if ( uiNeed <= ( uiCntSpc - uiUsed ) ) {
+					*ptDst++ = _T( '\t' );
+					uiColumn = uiNextTab;
+					uiUsed += uiNeed;
+				} else {
+					break;
+				}
+			}
+			while ( uiUsed < uiCntSpc ) {
+				*ptDst++ = _T( ' ' );
+				uiColumn++;
+				uiUsed++;
+			}
+			ptSrc = ptTmp;
+			continue;
+		}
+		if ( *ptSrc == _T( '\t' ) ) {
+			*ptDst++ = _T( '\t' );
+			uiColumn = ( ( uiColumn / uiSizeTab ) + 1 ) * uiSizeTab;
+			ptSrc++;
+			continue;
+		}
+		*ptDst++ = *ptSrc++;
+		uiColumn++;
+	}
+	*ptDst = _T( '\0' );
+	return bResult;
+
+}
+
 VOID DispError( VOID )
 {
 DWORD dwErr;

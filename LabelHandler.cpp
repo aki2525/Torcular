@@ -1,8 +1,8 @@
 #include "LabelHandler.h"
 #include "Torcular.h" // for WriteString()
 
-VOID CLabelHandler::RegisterLabel( DWORD dwAddr, DWORD dwFromAddr )
-{
+VOID CLabelHandler::RegisterLabel( LABEL_KIND lkKind, DWORD dwAddr, DWORD dwFromAddr )
+{ // lkKind ... not implemnted, yet.
 PLabelNode pPrev, pCurr, pNewNode;
 
 	m_labels[ dwAddr ].bTarget = TRUE;
@@ -42,7 +42,7 @@ DWORD dwTarget;
 		return;
 
 	dwTarget = ( ( (DWORD)pbyData[ dwPC ] << 8 ) | (DWORD)pbyData[ dwPC + 1 ] );
-	RegisterLabel( dwTarget, dwAddr );
+	RegisterLabel( _KIND_DW, dwTarget, dwAddr );
 }
 
 VOID CLabelHandler::RegisterVector( PBYTE pbyData, DWORD dwBaseAddr, DWORD dwVectorAddr, PTSTR ptszVectorName )
@@ -56,7 +56,7 @@ DWORD dwTarget, dwOfs;
 	}
 	dwOfs = dwVectorAddr - dwBaseAddr;
 	dwTarget = ( ( (DWORD)pbyData[ dwOfs ] << 8 ) | (DWORD)pbyData[ dwOfs + 1 ] );
-	RegisterLabel( dwTarget, dwVectorAddr );
+	RegisterLabel( _KIND_VECTOR, dwTarget, dwVectorAddr );
 
 	if ( ptszVectorName ) {
 		if ( _tcslen( ptszVectorName ) ) {
@@ -303,24 +303,17 @@ PLabelNode pCurr;
 	return bResult;
 }
 
-BOOL CLabelHandler::ViewLabel( DWORD dwAddr )
-{ // If a label is registered for that address, view it.
-BOOL bResult = FALSE;
-TCHAR tsz[ MAX_PATH ];
-
+PTSTR CLabelHandler::GetLabel( DWORD dwAddr )
+{ // If a label is registered for that address, return it.
 	if ( dwAddr >= _MAX_ADDRESS )
-		return bResult;
+		return nullptr;
 	if ( !m_labels[ dwAddr ].bTarget ) {
-		return bResult;
+		return nullptr;
 	}
 	if ( !m_labels[ dwAddr ].bUsed ) {
-		return bResult;
+		return nullptr;
 	}
-	bResult = TRUE;
-
-	wsprintf( tsz, _T( "%s:\t" ), m_labels[ dwAddr ].tszLabel );
-	WriteString( tsz );
-	return bResult;
+	return m_labels[ dwAddr ].tszLabel;
 }
 
 BOOL CLabelHandler::PrintLabelIfExists( DWORD dwAddr )
