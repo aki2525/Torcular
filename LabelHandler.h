@@ -44,6 +44,9 @@ public:
 // for pass 2
 	BOOL PrintLabelIfExists( DWORD dwAddr );
 	VOID PrintCrossReferenceTable( VOID );
+	BOOL TouchUsedAddr( DWORD dwAddr );
+	BOOL ViewReference( DWORD dwAddr );
+	BOOL ViewLabel( DWORD dwAddr );
 //
 	PTSTR GetLabelName( DWORD dwAddr );
 	BOOL hasLabel( DWORD dwAddr );

@@ -1,5 +1,5 @@
 #include "LabelHandler.h"
-#include "Torcular.h" // for AddMessage()
+#include "Torcular.h" // for WriteString()
 
 VOID CLabelHandler::RegisterLabel( DWORD dwAddr, DWORD dwFromAddr )
 {
@@ -253,6 +253,76 @@ HGLOBAL hGlobal = NULL;
 	return bResult;
 }
 
+BOOL CLabelHandler::TouchUsedAddr( DWORD dwAddr )
+{
+BOOL bResult = FALSE;
+
+	if ( dwAddr >= _MAX_ADDRESS )
+		return bResult;
+	if ( !m_labels[ dwAddr ].bTarget ) {
+		return bResult;
+	}
+	bResult = TRUE;
+	m_labels[ dwAddr ].bUsed = TRUE;
+
+	return bResult;
+}
+
+BOOL CLabelHandler::ViewReference( DWORD dwAddr )
+{ // If that address eferenced, view it.
+BOOL bResult = FALSE;
+TCHAR tsz[ MAX_PATH ];
+PLabelNode pCurr;
+
+	if ( dwAddr >= _MAX_ADDRESS )
+		return bResult;
+	if ( !m_labels[ dwAddr ].bTarget ) {
+		return bResult;
+	}
+	if ( !m_labels[ dwAddr ].bUsed ) {
+		return bResult;
+	}
+	bResult = TRUE;
+
+	pCurr = m_labels[ dwAddr ].pLabelList;
+	if ( pCurr != NULL ) {
+		wsprintf( tsz, _T( "; Referenced from: " ) );
+		WriteString( tsz );
+		while ( pCurr != NULL ) {
+			wsprintf( tsz, _T( "$%04X" ), pCurr->dwFromAddr );
+			WriteString( tsz );
+			pCurr = pCurr->pNext;
+			if ( pCurr != NULL ) {
+				wsprintf( tsz, _T( ", " ) );
+				WriteString( tsz );
+			}
+		}
+		wsprintf( tsz, _T( "\r\n" ) );
+		WriteString( tsz );
+	}
+	return bResult;
+}
+
+BOOL CLabelHandler::ViewLabel( DWORD dwAddr )
+{ // If a label is registered for that address, view it.
+BOOL bResult = FALSE;
+TCHAR tsz[ MAX_PATH ];
+
+	if ( dwAddr >= _MAX_ADDRESS )
+		return bResult;
+	if ( !m_labels[ dwAddr ].bTarget ) {
+		return bResult;
+	}
+	if ( !m_labels[ dwAddr ].bUsed ) {
+		return bResult;
+	}
+	bResult = TRUE;
+
+	wsprintf( tsz, _T( "%s:\t" ), m_labels[ dwAddr ].tszLabel );
+	WriteString( tsz );
+	return bResult;
+}
+
 BOOL CLabelHandler::PrintLabelIfExists( DWORD dwAddr )
 {
 BOOL bResult = FALSE;
@@ -270,21 +340,21 @@ PLabelNode pCurr;
 	pCurr = m_labels[ dwAddr ].pLabelList;
 	if ( pCurr != NULL ) {
 		wsprintf( tsz, _T( "; Referenced from: " ) );
-		AddMessage( tsz );
+		WriteString( tsz );
 		while ( pCurr != NULL ) {
 			wsprintf( tsz, _T( "$%04X" ), pCurr->dwFromAddr );
-			AddMessage( tsz );
+			WriteString( tsz );
 			pCurr = pCurr->pNext;
 			if ( pCurr != NULL ) {
 				wsprintf( tsz, _T( ", " ) );
-				AddMessage( tsz );
+				WriteString( tsz );
 			}
 		}
 		wsprintf( tsz, _T( "\r\n" ) );
-		AddMessage( tsz );
+		WriteString( tsz );
 	}
 	wsprintf( tsz, _T( "%s:\t" ), m_labels[ dwAddr ].tszLabel );
-	AddMessage( tsz );
+	WriteString( tsz );
 	return bResult;
 }
 
@@ -296,58 +366,58 @@ TCHAR tsz[ MAX_PATH * 3 ];
 PLabelNode pCurr;
 
 	wsprintf( tsz, _T( "\r\n========================================\r\n" ) );
-	AddMessage( tsz );
-	wsprintf( tsz, _T( "       CROSS REFERENCE TABLE            \r\n" ) );
-	AddMessage( tsz );
+	WriteString( tsz );
+	wsprintf( tsz, _T( "\t\tCROSS REFERENCE TABLE\r\n" ) );
+	WriteString( tsz );
 	wsprintf( tsz, _T( "========================================\r\n" ) );
-	AddMessage( tsz );
+	WriteString( tsz );
 	wsprintf( tsz, _T( "Label       Referenced From             \r\n" ) );
-	AddMessage( tsz );
+	WriteString( tsz );
 	wsprintf( tsz, _T( "----------------------------------------\r\n" ) );
-	AddMessage( tsz );
+	WriteString( tsz );
 
 	lCnt = 0;
 	for ( i = 0; i < _MAX_ADDRESS; i++ ) {
 		if ( m_labels[ i ].bTarget ) {
 			lCnt++;
 			bFound = TRUE;
-			wsprintf( tsz, _T( "%-11s" ), m_labels[ i ].tszLabel );
-			AddMessage( tsz );
+			wsprintf( tsz, _T( "%-12s : " ), m_labels[ i ].tszLabel );
+			WriteString( tsz );
 
 			if ( !m_labels[ i ].bUsed ) {
 				wsprintf( tsz, _T( " [WARNING: Unreached Address] " ) );
-				AddMessage( tsz );
+				WriteString( tsz );
 			}
 
 			pCurr = m_labels[ i ].pLabelList;
 			if ( pCurr == NULL ) {
 				wsprintf( tsz, _T( "(None)" ) );
-				AddMessage( tsz );
+				WriteString( tsz );
 			} else {
 				while ( pCurr != NULL ) {
 					wsprintf( tsz, _T( "$%04X" ), pCurr->dwFromAddr );
-					AddMessage( tsz );
+					WriteString( tsz );
 					pCurr = pCurr->pNext;
 					if ( pCurr != NULL ) {
 						wsprintf( tsz, _T( ", " ) );
-						AddMessage( tsz );
+						WriteString( tsz );
 					}
 				}
 			}
 			wsprintf( tsz, _T( "\n" ) );
-			AddMessage( tsz );
+			WriteString( tsz );
 		}
 	}
 
 	if ( !bFound ) {
 		wsprintf( tsz, _T( "(No cross references found)\r\n" ) );
-		AddMessage( tsz );
+		WriteString( tsz );
 	}
 
 	wsprintf( tsz, _T( "========================================\n\n" ) );
-	AddMessage( tsz );
+	WriteString( tsz );
 	wsprintf( tsz, _T( "%d Label(s)\n\n" ), lCnt );
-	AddMessage( tsz );
+	WriteString( tsz );
 }
 
 CLabelHandler::CLabelHandler()

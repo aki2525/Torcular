@@ -3,6 +3,7 @@
 #include "resource.h"
 #include "Disasm6801.h"
 
-VOID AddMessage( PTSTR ptStr );
+VOID AddMessage( PTSTR ptszStr );
+VOID WriteString( PTSTR ptszStr );
 VOID DispError( VOID );
 

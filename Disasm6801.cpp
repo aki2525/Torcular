@@ -276,9 +276,9 @@ OpcodeInfo g_tblOpcode[ 256 ] = {
 	{ MNEM_STX, 3, MODE_EXTENDED | FL_VALID }, // 0xFF
 };
 
-const char* get_mnemonic_string( MnemonicID id )
+PCTSTR CDisasm6801::GetMnemonicStr( MnemonicID Id )
 {
-	switch ( id ) {
+	switch ( Id ) {
 	case MNEM_NOP:
 		return "NOP";
 	case MNEM_LSRD:
@@ -511,7 +511,7 @@ const char* get_mnemonic_string( MnemonicID id )
 		return "STX";
 	case MNEM_UNKNOWN:
 	default:
-		return "???";
+		return nullptr;
 	}
 }
 
@@ -568,7 +568,10 @@ BOOL bResult = FALSE;
 		DoPass2();
 	}
 	//CloseFiles();
-	m_pLabelHandler->PrintCrossReferenceTable();
+	if ( bResult ) {
+		if ( m_bViewCrossReference )
+			m_pLabelHandler->PrintCrossReferenceTable();
+	}
 
 	return bResult;
 }
@@ -635,13 +638,13 @@ BOOL bResult = FALSE;
 	return bResult;
 }
 
-VOID EntryLabel( DWORD dwLabel, DWORD dwUse )
-{
-TCHAR tsz[ MAX_PATH ];
-
-	wsprintf( tsz, _T( "L%04X : %04X\r\n" ), dwLabel, dwUse );
-	AddMessage( tsz );
-}
+//VOID EntryLabel( DWORD dwLabel, DWORD dwUse )
+//{
+//TCHAR tsz[ MAX_PATH ];
+//
+//	wsprintf( tsz, _T( "L%04X : %04X\r\n" ), dwLabel, dwUse );
+//	WriteFile( tsz );
+//}
 
 BOOL CDisasm6801::DoPass1( VOID )
 {
@@ -656,7 +659,7 @@ DWORD dwLength, dwAddr;
 		return bResult;
 	pbyData = (PBYTE)GlobalLock( m_hBin );
 	if ( pbyData ) {
-		m_dwPC = m_dwStartAddress;
+		//m_dwPC = m_dwStartAddress;
 		m_dwAdr = 0;
 		while ( m_dwAdr < m_dwSizeBin ) {
 			byOpcode = pbyData[ m_dwAdr ];
@@ -700,33 +703,53 @@ BOOL bResult = FALSE;
 BOOL CDisasm6801::DoPass2( VOID )
 {
 BOOL bResult = FALSE;
+BOOL bViewdLabel;
 BYTE byOpcode;
-BOOL bDisp;
 PBYTE pbyData;
 DWORD dwLength;
 TCHAR tsz[ MAX_PATH ];
+PCTSTR pctszMnemonic;
 
 	if ( !m_hBin )
 		return bResult;
 	pbyData = (PBYTE)GlobalLock( m_hBin );
 	if ( pbyData ) {
-		m_dwPC = m_dwStartAddress;
+		//m_dwPC = m_dwStartAddress;
 		m_dwAdr = 0;
 		while ( m_dwAdr < m_dwSizeBin ) {
 			byOpcode = pbyData[ m_dwAdr ];
 			dwLength = g_tblOpcode[ byOpcode ].byLength;
-			bDisp = m_pLabelHandler->PrintLabelIfExists( m_dwAdr + m_dwStartAddress );
-			if ( bDisp )
-				wsprintf( tsz, _T( "\t%s\r\n" ), get_mnemonic_string( (MnemonicID)g_tblOpcode[ byOpcode ].byMnemonicId ) );
-			else
-				wsprintf( tsz, _T( "\t\t%s\r\n" ), get_mnemonic_string( (MnemonicID)g_tblOpcode[ byOpcode ].byMnemonicId ) );
-			AddMessage( tsz );
+			m_pLabelHandler->TouchUsedAddr( m_dwAdr + m_dwStartAddress );
+			if ( !m_bNoPass2 ) {
+				if ( m_bViewReferencedFrom )
+					m_pLabelHandler->ViewReference( m_dwAdr + m_dwStartAddress );
+				bViewdLabel = m_pLabelHandler->ViewLabel( m_dwAdr + m_dwStartAddress );
+				pctszMnemonic = GetMnemonicStr( (MnemonicID)g_tblOpcode[ byOpcode ].byMnemonicId );
+				if ( !pctszMnemonic ) {
+					if ( bViewdLabel ) {
+						wsprintf( tsz, _T( "\t???($%02X)\r\n" ), byOpcode );
+					} else {
+						wsprintf( tsz, _T( "\t\t???($%02X)\r\n" ), byOpcode );
+					}
+				} else {
+					if ( bViewdLabel ) {
+						wsprintf( tsz, _T( "\t%s\r\n" ), pctszMnemonic );
+					} else {
+						wsprintf( tsz, _T( "\t\t%s\r\n" ), pctszMnemonic );
+					}
+				}
+				WriteString( tsz );
+			}
 			m_dwAdr += dwLength;
 		}
 		GlobalUnlock( m_hBin );
 	}
 
 	return bResult;
+}
+
+VOID CDisasm6801::WriteToFile( PTSTR ptszStr )
+{
 }
 
 VOID CDisasm6801::CloseFiles( VOID )
@@ -739,6 +762,10 @@ VOID CDisasm6801::Init( VOID )
 	m_pLabelHandler = new CLabelHandler;
 	m_hBin = nullptr;
 	m_pbyBin = nullptr;
+//
+	m_bViewCrossReference = TRUE;
+	m_bNoPass2 = FALSE;
+	m_bViewReferencedFrom = TRUE;
 	m_dwStartAddress = 0xf000;
 }
 

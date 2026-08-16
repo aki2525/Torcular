@@ -198,18 +198,24 @@ public:
 	BOOL DoPass1( VOID );
 	BOOL CreateAsmFile( VOID );
 	BOOL DoPass2( VOID );
+	VOID WriteToFile( PTSTR ptszStr );
 	VOID CloseFiles( VOID );
 	VOID Init( VOID );
 	BOOL Set6801Vector( VOID );
 
+	PCTSTR GetMnemonicStr( MnemonicID Id );
 	CLabelHandler* m_pLabelHandler;
 private:
 	TCHAR m_tszBinPath[ MAX_PATH * 2 ];
 	HGLOBAL m_hBin;
 	PBYTE m_pbyBin;
 	DWORD m_dwSizeBin;
-	DWORD m_dwPC;
+	//DWORD m_dwPC;
 	DWORD m_dwAdr; // in m_pbyBin
+// Mode / Options
+	BOOL m_bViewCrossReference;
+	BOOL m_bNoPass2;
+	BOOL m_bViewReferencedFrom;
 //
 	DWORD m_dwStartAddress;
 };

@@ -16,6 +16,9 @@ HWND g_hwndView = NULL;
 LONG g_lClientX, g_lClientY;
 CDisasm6801* g_pThis = nullptr;
 
+// Option...
+BOOL g_bViewToWindow = TRUE;
+
 // Locals...
 ATOM MyRegisterClass( HINSTANCE hInstance );
 BOOL InitInstance( HINSTANCE hInstance, INT nCmdShow );
@@ -191,7 +194,16 @@ UNREFERENCED_PARAMETER( lParam );
 	return (INT_PTR)FALSE;
 }
 
-VOID AddMessage( PTSTR ptStr )
+VOID WriteString( PTSTR ptszStr )
+{
+	if ( g_pThis )
+		g_pThis->WriteToFile( ptszStr );
+	if ( g_bViewToWindow ) {
+		AddMessage( ptszStr );
+	}
+}
+
+VOID AddMessage( PTSTR ptszStr )
 {
 CHARRANGE cr;
 
@@ -200,7 +212,7 @@ CHARRANGE cr;
 		cr.cpMin = -1;
 		cr.cpMax = -1;
 		SendMessage( g_hwndView, EM_EXSETSEL, 0, (LPARAM)&cr );
-		SendMessage( g_hwndView, EM_REPLACESEL, FALSE, (LPARAM)ptStr );
+		SendMessage( g_hwndView, EM_REPLACESEL, FALSE, (LPARAM)ptszStr );
 		//SendMessage( g_hwndView, WM_SETREDRAW, TRUE, 0 );
 		SendMessage( g_hwndView, EM_SCROLLCARET, 0, 0 );
 		//InvalidateRect( g_hwndView, NULL, TRUE );
