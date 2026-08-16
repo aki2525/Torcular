@@ -200,6 +200,7 @@ public:
 	BOOL DoPass2( VOID );
 	VOID CloseFiles( VOID );
 	VOID Init( VOID );
+	BOOL Set6801Vector( VOID );
 
 	CLabelHandler* m_pLabelHandler;
 private:

@@ -515,6 +515,39 @@ const char* get_mnemonic_string( MnemonicID id )
 	}
 }
 
+BOOL CDisasm6801::Set6801Vector( VOID )
+{	// set 6801 vectors
+BOOL bResult = FALSE;
+PBYTE pbyData = NULL;
+TCHAR tsz[ MAX_PATH ];
+
+	if ( !m_pLabelHandler )
+		return bResult;
+	if ( m_hBin )
+		pbyData = (PBYTE)GlobalLock( m_hBin );
+	if ( pbyData ) {
+		bResult = TRUE;
+		_tcscpy( tsz, _T( "RESET_HANDLER" ) );
+		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFFE, tsz );
+		_tcscpy( tsz, _T( "NMI_HANDLER" ) );
+		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFFC, tsz );
+		_tcscpy( tsz, _T( "SWI_HANDLER" ) );
+		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFFA, tsz );
+		_tcscpy( tsz, _T( "IRQ1_HANDLER" ) );
+		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFF8, tsz );
+		_tcscpy( tsz, _T( "ICF_HANDLER" ) );
+		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFF6, tsz );  // Input Capture
+		_tcscpy( tsz, _T( "OCF_HANDLER" ) );
+		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFF4, tsz );  // Output Compare
+		_tcscpy( tsz, _T( "TOF_HANDLER" ) );
+		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFF2, tsz );  // Timer Overflow
+		_tcscpy( tsz, _T( "SCI_HANDLER" ) );
+		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFF0, tsz );  // Serial I/O
+		GlobalUnlock( m_hBin );
+	}
+	return bResult;
+}
+
 BOOL CDisasm6801::DoDisasm( VOID )
 {
 BOOL bResult = FALSE;
@@ -525,10 +558,15 @@ BOOL bResult = FALSE;
 		bResult = ReadBinFile();
 	if ( bResult ) {
 		m_pLabelHandler->Init();
+		bResult = Set6801Vector();
+	}
+	if ( bResult ) {
 		DoPass1();
 	}
 	//CreateAsmFile();
-	//DoPass2();
+	if ( bResult ) {
+		DoPass2();
+	}
 	//CloseFiles();
 	m_pLabelHandler->PrintCrossReferenceTable();
 
@@ -608,11 +646,11 @@ TCHAR tsz[ MAX_PATH ];
 BOOL CDisasm6801::DoPass1( VOID )
 {
 BOOL bResult = FALSE;
+CHAR scOfs;
 BYTE byMode;
 BYTE byOpcode;
 PBYTE pbyData;
 DWORD dwLength, dwAddr;
-CHAR scOfs;
 
 	if ( !m_hBin )
 		return bResult;
@@ -662,6 +700,31 @@ BOOL bResult = FALSE;
 BOOL CDisasm6801::DoPass2( VOID )
 {
 BOOL bResult = FALSE;
+BYTE byOpcode;
+BOOL bDisp;
+PBYTE pbyData;
+DWORD dwLength;
+TCHAR tsz[ MAX_PATH ];
+
+	if ( !m_hBin )
+		return bResult;
+	pbyData = (PBYTE)GlobalLock( m_hBin );
+	if ( pbyData ) {
+		m_dwPC = m_dwStartAddress;
+		m_dwAdr = 0;
+		while ( m_dwAdr < m_dwSizeBin ) {
+			byOpcode = pbyData[ m_dwAdr ];
+			dwLength = g_tblOpcode[ byOpcode ].byLength;
+			bDisp = m_pLabelHandler->PrintLabelIfExists( m_dwAdr + m_dwStartAddress );
+			if ( bDisp )
+				wsprintf( tsz, _T( "\t%s\r\n" ), get_mnemonic_string( (MnemonicID)g_tblOpcode[ byOpcode ].byMnemonicId ) );
+			else
+				wsprintf( tsz, _T( "\t\t%s\r\n" ), get_mnemonic_string( (MnemonicID)g_tblOpcode[ byOpcode ].byMnemonicId ) );
+			AddMessage( tsz );
+			m_dwAdr += dwLength;
+		}
+		GlobalUnlock( m_hBin );
+	}
 
 	return bResult;
 }

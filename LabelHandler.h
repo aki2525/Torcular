@@ -8,12 +8,6 @@
 
 class CLabelHandler {
 public:
-	//struct XRefNode {
-	//	DWORD dwFromAddr;
-	//	XRefNode* pNext;
-
-	//	XRefNode( DWORD dwFrom, XRefNode* pNode = nullptr ) : dwFromAddr( dwFrom ), pNext( pNode ) {}
-	//};
 	struct LabelNode;
 	typedef LabelNode* PLabelNode;
 	struct LabelNode {
@@ -43,11 +37,12 @@ public:
 // for pass 1
 	VOID RegisterLabel( DWORD dwAddr, DWORD dwFromAddr );
 	VOID RegisterDWLabel( PBYTE pbyData, DWORD dwPC, DWORD dwAddr ); // for DW
+	VOID RegisterVector( PBYTE pbyData, DWORD dwBaseAddr, DWORD dwVectorAddr, PTSTR ptszVectorName  = nullptr );
 
 	VOID SetLabelName( DWORD dwAddr, PTSTR ptszName );
 
 // for pass 2
-	VOID PrintLabelIfExists( DWORD dwAddr );
+	BOOL PrintLabelIfExists( DWORD dwAddr );
 	VOID PrintCrossReferenceTable( VOID );
 //
 	PTSTR GetLabelName( DWORD dwAddr );

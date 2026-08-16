@@ -38,8 +38,33 @@ VOID CLabelHandler::RegisterDWLabel( PBYTE pbyData, DWORD dwPC, DWORD dwAddr )
 {
 DWORD dwTarget;
 
+	if ( !pbyData )
+		return;
+
 	dwTarget = ( ( (DWORD)pbyData[ dwPC ] << 8 ) | (DWORD)pbyData[ dwPC + 1 ] );
 	RegisterLabel( dwTarget, dwAddr );
+}
+
+VOID CLabelHandler::RegisterVector( PBYTE pbyData, DWORD dwBaseAddr, DWORD dwVectorAddr, PTSTR ptszVectorName )
+{
+DWORD dwTarget, dwOfs;
+
+	if ( !pbyData )
+		return;
+    if ( dwVectorAddr < dwBaseAddr ) {
+		return;
+	}
+	dwOfs = dwVectorAddr - dwBaseAddr;
+	dwTarget = ( ( (DWORD)pbyData[ dwOfs ] << 8 ) | (DWORD)pbyData[ dwOfs + 1 ] );
+	RegisterLabel( dwTarget, dwVectorAddr );
+
+	if ( ptszVectorName ) {
+		if ( _tcslen( ptszVectorName ) ) {
+			SetLabelName( dwTarget, ptszVectorName );
+		}
+	}
+	//dwTarget = ( ( (DWORD)pbyData[ dwPC ] << 8 ) | (DWORD)pbyData[ dwPC + 1 ] );
+	//RegisterLabel( dwTarget, XREF_FROM_NONE );
 }
 
 VOID CLabelHandler::SetLabelName( DWORD dwAddr, PTSTR ptszName )
@@ -228,16 +253,18 @@ HGLOBAL hGlobal = NULL;
 	return bResult;
 }
 
-VOID CLabelHandler::PrintLabelIfExists( DWORD dwAddr )
+BOOL CLabelHandler::PrintLabelIfExists( DWORD dwAddr )
 {
+BOOL bResult = FALSE;
 TCHAR tsz[ MAX_PATH ];
 PLabelNode pCurr;
 
 	if ( dwAddr >= _MAX_ADDRESS )
-		return;
+		return bResult;
 	if ( !m_labels[ dwAddr ].bTarget ) {
-		return;
+		return bResult;
 	}
+	bResult = TRUE;
 	m_labels[ dwAddr ].bUsed = TRUE;
 
 	pCurr = m_labels[ dwAddr ].pLabelList;
@@ -253,11 +280,12 @@ PLabelNode pCurr;
 				AddMessage( tsz );
 			}
 		}
-		wsprintf( tsz, _T( "\n" ) );
+		wsprintf( tsz, _T( "\r\n" ) );
 		AddMessage( tsz );
 	}
-	wsprintf( tsz, _T( "%s:\r\n" ), m_labels[ dwAddr ].tszLabel );
+	wsprintf( tsz, _T( "%s:\t" ), m_labels[ dwAddr ].tszLabel );
 	AddMessage( tsz );
+	return bResult;
 }
 
 VOID CLabelHandler::PrintCrossReferenceTable( VOID )
