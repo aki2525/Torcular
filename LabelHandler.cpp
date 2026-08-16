@@ -4,12 +4,25 @@
 VOID CLabelHandler::RegisterLabel( LABEL_KIND lkKind, DWORD dwAddr, DWORD dwFromAddr )
 { // lkKind ... not implemnted, yet.
 PLabelNode pPrev, pCurr, pNewNode;
+#ifdef _SUPPORT_LABEL_ALIAS
+TCHAR tszDefaultName[ _MAX_LABEL ];
+#endif
+
+	if ( dwAddr >= _MAX_ADDRESS )
+		return;
 
 	m_labels[ dwAddr ].bTarget = TRUE;
 
+#ifndef _SUPPORT_LABEL_ALIAS
 	if ( !_tcslen( m_labels[ dwAddr ].tszLabel ) ) {
 		wsprintf( m_labels[ dwAddr ].tszLabel, "L%04X", dwAddr );
 	}
+#else
+	if ( !m_labels[ dwAddr ].pAliasList ) {
+		wsprintf( tszDefaultName, _T( "L%04X" ), dwAddr );
+		AddLabelAlias( dwAddr, tszDefaultName, FALSE );
+	}
+#endif
 
 	pPrev = NULL;
 	pCurr = m_labels[ dwAddr ].pLabelList;
@@ -69,25 +82,49 @@ DWORD dwTarget, dwOfs;
 
 VOID CLabelHandler::SetLabelName( DWORD dwAddr, PTSTR ptszName )
 {
+	if ( dwAddr >= _MAX_ADDRESS )
+		return;
+	if ( !ptszName )
+		return;
+	if ( !_tcslen( ptszName ) )
+		return;
+
+#ifndef _SUPPORT_LABEL_ALIAS
 	m_labels[ dwAddr ].bTarget = TRUE;
 	ZeroMemory( m_labels[ dwAddr ].tszLabel, sizeof( m_labels[ dwAddr ].tszLabel ) );
 	_tcsncpy( m_labels[ dwAddr ].tszLabel, ptszName, ( _MAX_LABEL - 1 ) );
+#else
+	AddLabelAlias( dwAddr, ptszName, TRUE );
+#endif
 }
 
 PTSTR CLabelHandler::GetLabelName( DWORD dwAddr )
 {
 PTSTR ptsResult = nullptr;
 
+	if ( dwAddr >= _MAX_ADDRESS )
+		return nullptr;
+
 	if ( m_labels[ dwAddr ].bTarget ) {
+#ifndef _SUPPORT_LABEL_ALIAS
 		ptsResult = m_labels[ dwAddr ].tszLabel;
+#else
+		if ( m_labels[ dwAddr ].pAliasList )
+			ptsResult = m_labels[ dwAddr ].pAliasList->tszName;
+#endif
 	}
 	return ptsResult;
+
 }
 
 BOOL CLabelHandler::hasLabel( DWORD dwAddr )
 {
 	if ( dwAddr >= _MAX_ADDRESS )
 		return FALSE;
+#ifdef _SUPPORT_LABEL_ALIAS
+	if ( !m_labels[ dwAddr ].pAliasList )
+		return FALSE;
+#endif
 	return m_labels[ dwAddr ].bTarget;
 }
 
@@ -315,6 +352,80 @@ PTSTR CLabelHandler::GetLabel( DWORD dwAddr )
 	}
 	return m_labels[ dwAddr ].tszLabel;
 }
+
+#ifdef _SUPPORT_LABEL_ALIAS
+BOOL CLabelHandler::AddLabelAlias( DWORD dwAddr, PCTSTR pctszLabel, BOOL bAtHead )
+{
+BOOL bResult = FALSE;
+TCHAR tszDefaultName[ _MAX_LABEL ];
+PLabelInfo pInfo;
+PLabelNameNode pCurr, pPrev, pCurrDel, pPrevDel, pNewNode;
+
+	if ( dwAddr >= _MAX_ADDRESS )
+		return bResult;
+	if ( !pctszLabel )
+		return bResult;
+	if ( !_tcslen( pctszLabel ) )
+		return bResult;
+
+	pInfo = &m_labels[ dwAddr ];
+	wsprintf( tszDefaultName, _T( "L%04X" ), dwAddr );
+	if ( _tcscmp( pctszLabel, tszDefaultName ) ) {
+		pCurrDel = pInfo->pAliasList;
+		pPrevDel = nullptr;
+		while ( pCurrDel != nullptr ) {
+			if ( !_tcscmp( pCurrDel->tszName, tszDefaultName ) ) {
+				if ( pPrevDel == nullptr ) {
+					pInfo->pAliasList = pCurrDel->pNext;
+				} else {
+					pPrevDel->pNext = pCurrDel->pNext;
+				}
+				delete pCurrDel;
+				break;
+			}
+			pPrevDel = pCurrDel;
+			pCurrDel = pCurrDel->pNext;
+		}
+	}
+
+
+	pCurr = pInfo->pAliasList;
+	pPrev = nullptr;
+	while ( pCurr != nullptr ) {
+		if ( _tcscmp( pCurr->tszName, pctszLabel ) == 0 ) {
+			bResult = TRUE;
+			break;
+		}
+		pPrev = pCurr;
+		pCurr = pCurr->pNext;
+	}
+	if ( !bResult ) {
+		pNewNode = new LabelNameNode( pctszLabel );
+		if ( pNewNode ) {
+			bResult = TRUE;
+			if ( bAtHead || pInfo->pAliasList == nullptr ) {
+				pNewNode->pNext = pInfo->pAliasList;
+				pInfo->pAliasList = pNewNode;
+			} else {
+				pPrev->pNext = pNewNode;
+			}
+			pInfo->bTarget = TRUE;
+		}
+	}
+	return bResult;
+}
+
+CLabelHandler::PLabelNameNode CLabelHandler::GetLabelAliasList( DWORD dwAddr )
+{
+	if ( dwAddr >= _MAX_ADDRESS )
+		return nullptr;
+	if ( !m_labels[dwAddr].bTarget )
+		return nullptr;
+
+	m_labels[ dwAddr ].bUsed = TRUE;
+	return m_labels[ dwAddr ].pAliasList;
+}
+#endif
 
 BOOL CLabelHandler::PrintLabelIfExists( DWORD dwAddr )
 {

@@ -718,6 +718,12 @@ TCHAR tsz[ MAX_PATH * 3 ], tszTmp[ MAX_PATH ], tszAddress[ MAX_PATH ], tszMachin
 PTSTR ptszLabel;
 PCTSTR pctszMnemonic;
 POpcodeInfo pInfo;
+#ifndef _SUPPORT_LABEL_ALIAS
+PTSTR ptszLabel;
+#else
+PTSTR ptszCurLabel;
+CLabelHandler::PLabelNameNode pLabelNode;
+#endif
 
 	if ( !m_hBin )
 		return bResult;
@@ -750,7 +756,11 @@ POpcodeInfo pInfo;
 						_tcscat( tszMachineCode, tszTmp );
 					}
 				}
+#ifndef _SUPPORT_LABEL_ALIAS
 				ptszLabel = m_pLabelHandler->GetLabel( dwCurAddress );
+#else
+				pLabelNode = m_pLabelHandler->GetLabelAliasList( dwCurAddress );
+#endif
 				pctszMnemonic = GetMnemonicStr( (MnemonicID)pInfo->byMnemonicId );
 				if ( pctszMnemonic ) {
 					byType = pInfo->byType;
@@ -801,10 +811,11 @@ POpcodeInfo pInfo;
 				}
 				FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
 				tsz[ _countof( tsz ) - 1 ] = '\0';
-				CopyMemory( tsz, tszAddress, _tcslen( tszAddress ) );
-				CopyMemory( tsz + 6, tszMachineCode, _tcslen( tszMachineCode ) );
+				CopyMemory( tsz, tszAddress, _tcslen( tszAddress ) * sizeof( TCHAR ) );
+				CopyMemory( tsz + 6, tszMachineCode, _tcslen( tszMachineCode ) * sizeof( TCHAR ) );
+#ifndef _SUPPORT_LABEL_ALIAS
 				if ( ptszLabel ) {
-					CopyMemory( tsz + 6 + 3 * 3 + 2, ptszLabel, _tcslen( ptszLabel ) );
+					CopyMemory( tsz + 6 + 3 * 3 + 2, ptszLabel, _tcslen( ptszLabel ) * sizeof( TCHAR ) );
 					tsz[ 6 + 3 * 3 + 2 + _tcslen( ptszLabel ) ] = ':';
 				}
 				if ( pctszMnemonic ) {
@@ -818,11 +829,35 @@ POpcodeInfo pInfo;
 							tsz[ sizeof( tsz ) - 1 ] = '\0';
 						}
 					}
+					CopyMemory( tsz + 6 + 3 * 3 + 2 + 12 + 3, pctszMnemonic, _tcslen( pctszMnemonic ) * sizeof( TCHAR ) );
+					CopyMemory( tsz + 6 + 3 * 3 + 2 + 12 + 3 + 8, tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
+				} else {
+					_tcscpy( tsz + 6 + 3 * 3 + 2 + 12 + 3, _T( "???" ) );
+				}
+#else
+				if ( pLabelNode ) {
+					while ( pLabelNode ) {
+						ptszCurLabel = pLabelNode->tszName;
+						CopyMemory( tsz + 6 + 3 * 3 + 2, ptszCurLabel, _tcslen( ptszCurLabel ) );
+						tsz[ 6 + 3 * 3 + 2 + _tcslen( ptszCurLabel ) ] = ':';
+						pLabelNode = pLabelNode->pNext;
+						if ( pLabelNode != nullptr || _tcslen( ptszCurLabel ) > 12 ) {
+							CutLastSpace( tsz, _countof( tsz ) );
+							_tcscat( tsz, _T( "\r\n" ) );
+							ConvertToUseTab( tsz, m_uiTab );
+							WriteString( tsz );
+							FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
+							tsz[ sizeof( tsz ) - 1 ] = '\0';
+						}
+					}
+				}
+				if ( pctszMnemonic ) {
 					CopyMemory( tsz + 6 + 3 * 3 + 2 + 12 + 3, pctszMnemonic, _tcslen( pctszMnemonic ) );
 					CopyMemory( tsz + 6 + 3 * 3 + 2 + 12 + 3 + 8, tszOperand, _tcslen( tszOperand ) );
 				} else {
 					_tcscpy( tsz + 6 + 3 * 3 + 2 + 12 + 3, _T( "???" ) );
 				}
+#endif
 				CutLastSpace( tsz, _countof( tsz ) );
 				_tcscat( tsz, _T( "\r\n" ) );
 				ConvertToUseTab( tsz, m_uiTab );

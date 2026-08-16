@@ -6,6 +6,8 @@
 #define _MAX_LABEL ( MAX_PATH )
 #define _MAX_ADDRESS ( 65536 )
 
+#define _SUPPORT_LABEL_ALIAS
+
 enum LABEL_KIND {
 	_KIND_NORMAL,
 	_KIND_JUMP,
@@ -28,17 +30,45 @@ public:
 		LabelNode( DWORD dwFrom, PLabelNode pNode = nullptr ) : dwFromAddr( dwFrom ), pNext( pNode ) {}
 	};
 
+#ifdef _SUPPORT_LABEL_ALIAS
+	struct LabelNameNode;
+	typedef LabelNameNode* PLabelNameNode;
+	struct LabelNameNode {
+		TCHAR tszName[ _MAX_LABEL ];
+		PLabelNameNode pNext;
+
+		LabelNameNode( PCTSTR ptszName, PLabelNameNode pNextNode = nullptr ) : pNext( pNextNode ) {
+			if ( ptszName ) {
+				//_tcsncpy( tszName, ptszName, _MAX_LABEL - 1 );
+				//tszName[ _MAX_LABEL - 1 ] = _T( '\0' );
+				_tcsncpy_s( tszName, _MAX_LABEL, ptszName, _TRUNCATE );
+			} else {
+				tszName[ 0 ] = _T( '\0' );
+			}
+		}
+	};
+#endif
+
+	struct LabelInfo;
+	typedef LabelInfo* PLabelInfo;
 	struct LabelInfo {
 		BOOL bTarget;
 		BOOL bUsed;	// Used in Pass2?( for test )
 		TCHAR tszLabel[ _MAX_LABEL ];
+		BOOL bUserDefined;
 		PLabelNode pLabelList;
+#ifdef _SUPPORT_LABEL_ALIAS
+		PLabelNameNode pAliasList;
+#endif
 
-		LabelInfo() : bTarget( FALSE ), bUsed( FALSE ), pLabelList( nullptr ) {
+#ifndef _SUPPORT_LABEL_ALIAS
+		LabelInfo() : bTarget( FALSE ), bUsed( FALSE ), bUserDefined( FALSE ), pLabelList( nullptr ) {
+#else
+		LabelInfo() : bTarget( FALSE ), bUsed( FALSE ), bUserDefined( FALSE ), pAliasList( nullptr ), pLabelList( nullptr ) {
+#endif
 			tszLabel[ 0 ] = '\0';
 		}
 	};
-
 public:
 	CLabelHandler();
 	~CLabelHandler();
@@ -58,12 +88,18 @@ public:
 	BOOL TouchUsedAddr( DWORD dwAddr );
 	BOOL ViewReference( DWORD dwAddr );
 	PTSTR GetLabel( DWORD dwAddr );
+#ifdef _SUPPORT_LABEL_ALIAS
+	PLabelNameNode GetLabelAliasList( DWORD dwAddr );
+#endif
 //
 	PTSTR GetLabelName( DWORD dwAddr );
 	BOOL hasLabel( DWORD dwAddr );
 	BOOL ExportLabelsToFile( PTSTR ptszFilename );
 	BOOL ImportLabelsFromFile( PTSTR ptszFilename );
 private:
+#ifdef _SUPPORT_LABEL_ALIAS
+	BOOL AddLabelAlias( DWORD dwAddr, PCTSTR pctszLabel, BOOL bAtHead = FALSE );
+#endif
 	LabelInfo m_labels[ _MAX_ADDRESS ];
 };
 
