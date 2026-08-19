@@ -519,20 +519,28 @@ TCHAR tsz[ MAX_PATH ];
 		bResult = TRUE;
 		_tcscpy( tsz, _T( "RESET_HANDLER" ) );
 		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFFE, tsz );
+m_pAttrHandler->SetAttrRange( 0xfffe, 0xffff, ATTR_DW );
 		_tcscpy( tsz, _T( "NMI_HANDLER" ) );
 		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFFC, tsz );
+m_pAttrHandler->SetAttrRange( 0xfffc, 0xfffd, ATTR_DW );
 		_tcscpy( tsz, _T( "SWI_HANDLER" ) );
 		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFFA, tsz );
+m_pAttrHandler->SetAttrRange( 0xfffa, 0xfffb, ATTR_DW );
 		_tcscpy( tsz, _T( "IRQ1_HANDLER" ) );
 		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFF8, tsz );
+m_pAttrHandler->SetAttrRange( 0xfff8, 0xfff9, ATTR_DW );
 		_tcscpy( tsz, _T( "ICF_HANDLER" ) );
 		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFF6, tsz );  // Input Capture
+m_pAttrHandler->SetAttrRange( 0xfff6, 0xfff7, ATTR_DW );
 		_tcscpy( tsz, _T( "OCF_HANDLER" ) );
 		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFF4, tsz );  // Output Compare
+m_pAttrHandler->SetAttrRange( 0xfff4, 0xfff5, ATTR_DW );
 		_tcscpy( tsz, _T( "TOF_HANDLER" ) );
 		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFF2, tsz );  // Timer Overflow
+m_pAttrHandler->SetAttrRange( 0xfff2, 0xfff3, ATTR_DW );
 		_tcscpy( tsz, _T( "SCI_HANDLER" ) );
 		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFF0, tsz );  // Serial I/O
+m_pAttrHandler->SetAttrRange( 0xfff0, 0xfff1, ATTR_DW );
 		GlobalUnlock( m_hBin );
 //
 		_tcscpy( tsz, _T( "RMCR" ) );
