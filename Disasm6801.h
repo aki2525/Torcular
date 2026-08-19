@@ -175,6 +175,7 @@ public:
 
 	BOOL ImportProject( PTSTR ptszFilename );
 	BOOL ExportProject( PTSTR ptszFilename );
+	VOID RegisterVector( PBYTE pbyData, DWORD dwBaseAddr, DWORD dwVectorAddr, PCTSTR pctszVectorName = nullptr, PCTSTR pctszComment = nullptr );
 
 	PCTSTR GetMnemonicStr( MnemonicID Id );
 	CLabelHandler* m_pLabelHandler;

@@ -58,7 +58,7 @@ DWORD dwTarget;
 	RegisterLabel( _KIND_DW, dwTarget, dwAddr );
 }
 
-VOID CLabelHandler::RegisterVector( PBYTE pbyData, DWORD dwBaseAddr, DWORD dwVectorAddr, PTSTR ptszVectorName )
+VOID CLabelHandler::RegisterVector( PBYTE pbyData, DWORD dwBaseAddr, DWORD dwVectorAddr, PCTSTR pctszVectorName, PCTSTR pctszComment )
 {
 DWORD dwTarget, dwOfs;
 
@@ -71,40 +71,53 @@ DWORD dwTarget, dwOfs;
 	dwTarget = ( ( (DWORD)pbyData[ dwOfs ] << 8 ) | (DWORD)pbyData[ dwOfs + 1 ] );
 	RegisterLabel( _KIND_VECTOR, dwTarget, dwVectorAddr );
 
-	if ( ptszVectorName ) {
-		if ( _tcslen( ptszVectorName ) ) {
-			SetLabelName( dwTarget, ptszVectorName );
+	if ( pctszVectorName ) {
+		if ( _tcslen( pctszVectorName ) ) {
+			SetLabelName( dwTarget, pctszVectorName, pctszComment );
 		}
 	}
 	//dwTarget = ( ( (DWORD)pbyData[ dwPC ] << 8 ) | (DWORD)pbyData[ dwPC + 1 ] );
 	//RegisterLabel( dwTarget, XREF_FROM_NONE );
 }
 
-VOID CLabelHandler::SetLabelName( DWORD dwAddr, PTSTR ptszName )
+VOID CLabelHandler::RegisterEqu( DWORD dwAddr, PCTSTR pctszEQUName, PCTSTR pctszComment, DWORD dwFlags )
 {
 	if ( dwAddr >= _MAX_ADDRESS )
 		return;
-	if ( !ptszName )
+
+	m_labels[ dwAddr ].bUserDefined |= dwFlags;
+	if ( pctszEQUName ) {
+		if ( _tcslen( pctszEQUName ) ) {
+			SetEquName( dwAddr, pctszEQUName, pctszComment );
+		}
+	}
+}
+
+VOID CLabelHandler::SetLabelName( DWORD dwAddr, PCTSTR pctszName, PCTSTR pctszComment )
+{
+	if ( dwAddr >= _MAX_ADDRESS )
 		return;
-	if ( !_tcslen( ptszName ) )
+	if ( !pctszName )
+		return;
+	if ( !_tcslen( pctszName ) )
 		return;
 
 #ifndef _SUPPORT_LABEL_ALIAS
 	m_labels[ dwAddr ].bTarget = TRUE;
 	ZeroMemory( m_labels[ dwAddr ].tszLabel, sizeof( m_labels[ dwAddr ].tszLabel ) );
-	_tcsncpy( m_labels[ dwAddr ].tszLabel, ptszName, ( _MAX_LABEL - 1 ) );
+	_tcsncpy( m_labels[ dwAddr ].tszLabel, pctszName, ( _MAX_LABEL - 1 ) );
 #else
-	AddLabelAlias( dwAddr, ptszName, TRUE, FALSE );
+	AddLabelAlias( dwAddr, pctszName, pctszComment, TRUE, FALSE );
 #endif
 }
 
-VOID CLabelHandler::SetEquName( DWORD dwAddr, PTSTR ptszName )
+VOID CLabelHandler::SetEquName( DWORD dwAddr, PCTSTR pctszName, PCTSTR pctszComment )
 {
 	if ( dwAddr >= _MAX_ADDRESS )
 		return;
-	if ( !ptszName )
+	if ( !pctszName )
 		return;
-	if ( !_tcslen( ptszName ) )
+	if ( !_tcslen( pctszName ) )
 		return;
 
 #ifndef _SUPPORT_LABEL_ALIAS
@@ -113,10 +126,64 @@ VOID CLabelHandler::SetEquName( DWORD dwAddr, PTSTR ptszName )
 	ZeroMemory( m_labels[ dwAddr ].tszLabel, sizeof( m_labels[ dwAddr ].tszLabel ) );
 	_tcsncpy( m_labels[ dwAddr ].tszLabel, ptszName, ( _MAX_LABEL - 1 ) );
 #else
-	AddLabelAlias( dwAddr, ptszName, TRUE, TRUE );
+	AddLabelAlias( dwAddr, pctszName, pctszComment, TRUE, TRUE );
 #endif
 }
 
+BOOL CLabelHandler::SetCommentByName( DWORD dwAddr, PCTSTR pctszName, PCTSTR pctszComment )
+{
+BOOL bResult = FALSE;
+PLabelNameNode pCurr;
+
+	if ( dwAddr >= _MAX_ADDRESS )
+		return bResult;
+	if ( !pctszName )
+		return bResult;
+	if ( !_tcslen( pctszName ) )
+		return bResult;
+
+#ifdef _SUPPORT_LABEL_ALIAS
+	pCurr = m_labels[ dwAddr ].pAliasList;
+	while ( pCurr ) {
+		if ( !_tcscmp( pCurr->tszName, pctszName ) ) {
+			if ( pctszComment ) {
+				_tcsncpy_s( pCurr->tszComment, _MAX_COMMENT, pctszComment, _TRUNCATE );
+			} else {
+				pCurr->tszComment[ 0 ] = _T( '\0' );
+			}
+			bResult = TRUE;
+			break;
+		}
+		pCurr = pCurr->pNext;
+	}
+#endif
+	return bResult;
+}
+
+PCTSTR CLabelHandler::GetCommentByName( DWORD dwAddr, PCTSTR pctszName )
+{
+PTSTR ptszResult = nullptr;
+PLabelNameNode pCurr;
+
+	if ( dwAddr >= _MAX_ADDRESS )
+		return ptszResult;
+	if ( !pctszName )
+		return ptszResult;
+
+#ifdef _SUPPORT_LABEL_ALIAS
+	pCurr = m_labels[ dwAddr ].pAliasList;
+	while ( pCurr ) {
+		if ( !_tcscmp( pCurr->tszName, pctszName ) ) {
+			if ( pCurr->tszComment[ 0 ] != _T( '\0' ) ) {
+				ptszResult = pCurr->tszComment;
+			}
+			break;
+		}
+		pCurr = pCurr->pNext;
+	}
+#endif
+	return ptszResult;
+}
 #if 0
 PTSTR CLabelHandler::GetLabelName( DWORD dwAddr, BOOL bGetEqu )
 {
@@ -159,9 +226,10 @@ PLabelNameNode pCurr;
 		ptszResult = m_labels[ dwAddr ].tszLabel;
 #else
 		pCurr = m_labels[ dwAddr ].pAliasList;
-		while ( pCurr != nullptr ) {
+		while ( pCurr ) {
 			if ( pCurr->bIsEqu == bGetEqu ) {
 				ptszResult = pCurr->tszName;
+				break;
 			}
 			pCurr = pCurr->pNext;
 		}
@@ -218,10 +286,14 @@ PLabelNameNode pNode;
 
 	bResult = TRUE;
 	pNode = m_labels[ dwAddr ].pAliasList;
-	while ( pNode != nullptr ) {
+	while ( pNode ) {
 		if ( pNode->bIsEqu == bEqu ) {
 			if ( pNode->tszName[ 0 ] != _T( '\0' ) ) {
-				wsprintf( tsz, _T( "$%04X : %s\r\n" ), dwAddr, pNode->tszName );
+				if ( pNode->tszComment[ 0 ] != _T( '\0' ) ) {
+					wsprintf( tsz, _T( "$%04X : %s ; %s\r\n" ), dwAddr, pNode->tszName, pNode->tszComment );
+				} else {
+					wsprintf( tsz, _T( "$%04X : %s\r\n" ), dwAddr, pNode->tszName );
+				}
 
 				dwWrite = (DWORD)_tcslen( tsz );
 				if ( !WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL ) ) {
@@ -322,7 +394,7 @@ DWORD i, dwWrite, dwWritten;
 }
 
 #ifdef _SUPPORT_LABEL_ALIAS
-VOID CLabelHandler::ProcessImportedLabel( DWORD dwAddr, PCSTR pcszBufName, BOOL bIsEqu )
+VOID CLabelHandler::ProcessImportedLabel( DWORD dwAddr, PCSTR pcszBufName, PCSTR pcszBufComment, BOOL bIsEqu )
 {
 	if ( dwAddr >= _MAX_ADDRESS )
 		return;
@@ -332,20 +404,27 @@ VOID CLabelHandler::ProcessImportedLabel( DWORD dwAddr, PCSTR pcszBufName, BOOL 
 		return;
 
 #ifdef UNICODE
-	TCHAR tszName[ _MAX_LABEL ];
+TCHAR tszName[ _MAX_LABEL ];
+TCHAR tszComment[ _MAX_COMMENT ];
 	MultiByteToWideChar( CP_ACP, 0, pcszBufName, -1, tszName, _MAX_LABEL );
-	AddLabelName( dwAddr, tszName, FALSE, bIsEqu );
+	if ( pcszBufComment && pcszBufComment[ 0 ] != '\0' ) {
+		MultiByteToWideChar( CP_ACP, 0, pcszBufComment, -1, tszComment, _MAX_COMMENT );
+		AddLabelAlias( dwAddr, tszName, tszComment, FALSE, bIsEqu );
+	} else {
+		AddLabelAlias( dwAddr, tszName, nullptr, FALSE, bIsEqu );
+	}
 #else
-	AddLabelAlias( dwAddr, pcszBufName, FALSE, bIsEqu );
+	AddLabelAlias( dwAddr, pcszBufName, pcszBufComment, FALSE, bIsEqu );
 #endif
 }
 #endif
 
 BOOL CLabelHandler::ImportFromBuffer( PCSTR pcszBuffer )
 {
-INT iDigit, iLenName;
+INT iDigit, iLenName, iLenComment;
 BOOL bDigit, bIsEquMode = FALSE;
 TCHAR tszBufName[ _MAX_LABEL ];
+TCHAR tszBufComment[ _MAX_COMMENT ];
 DWORD dwAddr;
 PCSTR p, pNext;
 
@@ -393,6 +472,11 @@ PCSTR p, pNext;
 					p++;
 				continue;
 			}
+		}
+		if ( ( *p == ';' ) || ( *p == '#' ) ) {
+			while ( ( *p != '\0' ) && ( *p != '\n' ) && ( *p != '\r' ) )
+				p++;
+			continue;
 		}
 		if ( *p == '$' ) {
 			p++;
@@ -442,9 +526,24 @@ PCSTR p, pNext;
 		}
 		tszBufName[ iLenName ] = '\0';
 
+		iLenComment = 0;
+		ZeroMemory( tszBufComment, sizeof( tszBufComment ) );
+		while ( ( *p == ' ' ) || ( *p == '\t' ) ) p++;
+		if ( *p == ';' ) {
+			p++;
+			while ( ( *p == ' ' ) || ( *p == '\t' ) ) p++;
+			while ( ( *p != '\0' ) && ( *p != '\r' ) && ( *p != '\n' ) ) {
+				if ( iLenComment < ( _MAX_COMMENT - 1 ) ) {
+					tszBufComment[ iLenComment++ ] = *p;
+				}
+				p++;
+			}
+			tszBufComment[ iLenComment ] = '\0';
+		}
+
 		if ( ( iLenName > 0 ) && ( dwAddr < _MAX_ADDRESS ) ) {
 #ifdef _SUPPORT_LABEL_ALIAS
-			ProcessImportedLabel( dwAddr, (PCSTR)tszBufName, bIsEquMode );
+			ProcessImportedLabel( dwAddr, tszBufName, tszBufComment, bIsEquMode );
 #else
 			if ( bIsEquMode ) {
 				SetEquName( dwAddr, tszBufName );
@@ -492,14 +591,14 @@ PLabelNode pCurr;
 	bResult = TRUE;
 
 	pCurr = m_labels[ dwAddr ].pLabelList;
-	if ( pCurr != NULL ) {
+	if ( pCurr ) {
 		wsprintf( tsz, _T( "; Referenced from: " ) );
 		WriteString( tsz );
-		while ( pCurr != NULL ) {
+		while ( pCurr ) {
 			wsprintf( tsz, _T( "$%04X" ), pCurr->dwFromAddr );
 			WriteString( tsz );
 			pCurr = pCurr->pNext;
-			if ( pCurr != NULL ) {
+			if ( pCurr ) {
 				wsprintf( tsz, _T( ", " ) );
 				WriteString( tsz );
 			}
@@ -524,7 +623,7 @@ PTSTR CLabelHandler::GetLabel( DWORD dwAddr )
 }
 
 #ifdef _SUPPORT_LABEL_ALIAS
-BOOL CLabelHandler::AddLabelAlias( DWORD dwAddr, PCTSTR pctszLabel, BOOL bAtHead, BOOL bIsEqu )
+BOOL CLabelHandler::AddLabelAlias( DWORD dwAddr, PCTSTR pctszLabel, PCTSTR pctszComment, BOOL bAtHead, BOOL bIsEqu )
 {
 BOOL bResult = FALSE;
 TCHAR tszDefaultName[ _MAX_LABEL ];
@@ -546,9 +645,9 @@ PLabelNameNode pCurr, pPrev, pCurrDel, pPrevDel, pNewNode;
 	if ( _tcscmp( pctszLabel, tszDefaultName ) ) {
 		pCurrDel = pInfo->pAliasList;
 		pPrevDel = nullptr;
-		while ( pCurrDel != nullptr ) {
+		while ( pCurrDel ) {
 			if ( !_tcscmp( pCurrDel->tszName, tszDefaultName ) ) {
-				if ( pPrevDel == nullptr ) {
+				if ( !pPrevDel ) {
 					pInfo->pAliasList = pCurrDel->pNext;
 				} else {
 					pPrevDel->pNext = pCurrDel->pNext;
@@ -563,9 +662,13 @@ PLabelNameNode pCurr, pPrev, pCurrDel, pPrevDel, pNewNode;
 
 	pCurr = pInfo->pAliasList;
 	pPrev = nullptr;
-	while ( pCurr != nullptr ) {
+	while ( pCurr ) {
 		if ( pCurr->bIsEqu == bIsEqu ) {
 			if ( !_tcscmp( pCurr->tszName, pctszLabel ) ) {
+				if ( pctszComment ) {
+					// update comment
+					_tcsncpy_s( pCurr->tszComment, _MAX_LABEL, pctszComment, _TRUNCATE );
+				}
 				bResult = TRUE;
 				break;
 			}
@@ -574,7 +677,7 @@ PLabelNameNode pCurr, pPrev, pCurrDel, pPrevDel, pNewNode;
 		pCurr = pCurr->pNext;
 	}
 	if ( !bResult ) {
-		pNewNode = new LabelNameNode( pctszLabel, nullptr, bIsEqu );
+		pNewNode = new LabelNameNode( pctszLabel,pctszComment, nullptr, bIsEqu );
 		if ( pNewNode ) {
 			bResult = TRUE;
 			if ( bAtHead || ( pInfo->pAliasList == nullptr ) ) {
@@ -616,14 +719,14 @@ PLabelNode pCurr;
 	m_labels[ dwAddr ].bUsed = TRUE;
 
 	pCurr = m_labels[ dwAddr ].pLabelList;
-	if ( pCurr != NULL ) {
+	if ( pCurr ) {
 		wsprintf( tsz, _T( "; Referenced from: " ) );
 		WriteString( tsz );
 		while ( pCurr != NULL ) {
 			wsprintf( tsz, _T( "$%04X" ), pCurr->dwFromAddr );
 			WriteString( tsz );
 			pCurr = pCurr->pNext;
-			if ( pCurr != NULL ) {
+			if ( pCurr ) {
 				wsprintf( tsz, _T( ", " ) );
 				WriteString( tsz );
 			}
@@ -724,6 +827,10 @@ PLabelNameNode pPrimary, pAlias;
 						}
 					}
 				}
+				if ( pPrimary->tszComment[ 0 ] != _T( '\0' ) ) {
+					wsprintf( tsz, _T( "  ; %s" ), pPrimary->tszComment );
+					WriteString( tsz );
+				}
 				wsprintf( tsz, _T( "\r\n" ) );
 				WriteString( tsz );
 
@@ -734,6 +841,10 @@ PLabelNameNode pPrimary, pAlias;
 					while ( pAlias ) {
 						wsprintf( tsz, _T( "%s" ), pAlias->tszName );
 						WriteString( tsz );
+						if ( pAlias->tszComment[ 0 ] != _T( '\0' ) ) {
+							wsprintf( tsz, _T( "(%s)" ), pAlias->tszComment );
+							WriteString( tsz );
+						}
 						pAlias = pAlias->pNext;
 						if ( pAlias ) {
 							wsprintf( tsz, _T( ", " ) );
@@ -772,6 +883,20 @@ BOOL bResult = FALSE;
 	return bResult;
 }
 
+//PCTSTR CLabelHandler::GetPrimaryComment( DWORD dwAddr )
+//{
+//PCTSTR pctResult = nullptr;
+//
+//	if ( dwAddr >= _MAX_ADDRESS )
+//		return pctResult;
+//	if ( !m_labels[ dwAddr ].bTarget )
+//		return pctResult;
+//	if ( m_labels[ dwAddr ].pAliasList ) {
+//		pctResult = m_labels[ dwAddr ].pAliasList->tszComment;
+//	}
+//	return pctResylt;
+//}
+
 CLabelHandler::CLabelHandler()
 {
 	Init();
@@ -790,14 +915,14 @@ PLabelNameNode pAliasNode, pAliasTemp;
 
 	for ( i = 0; i < _MAX_ADDRESS; ++i ) {
 		pNode = m_labels[ i ].pLabelList;
-		while ( pNode != NULL ) {
+		while ( pNode ) {
 			pTemp = pNode->pNext;
 			delete pNode;
 			pNode = pTemp;
 		}
 #ifdef _SUPPORT_LABEL_ALIAS
 		pAliasNode = m_labels[ i ].pAliasList;
-		while ( pAliasNode != NULL ) {
+		while ( pAliasNode ) {
 			pAliasTemp = pAliasNode->pNext;
 			delete pAliasNode;
 			pAliasNode = pAliasTemp;

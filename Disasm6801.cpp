@@ -509,7 +509,6 @@ BOOL CDisasm6801::Set6801Vector( VOID )
 {	// set 6801 vectors
 BOOL bResult = FALSE;
 PBYTE pbyData = NULL;
-TCHAR tsz[ MAX_PATH ];
 
 	if ( !m_pLabelHandler )
 		return bResult;
@@ -517,76 +516,52 @@ TCHAR tsz[ MAX_PATH ];
 		pbyData = (PBYTE)GlobalLock( m_hBin );
 	if ( pbyData ) {
 		bResult = TRUE;
-		_tcscpy( tsz, _T( "RESET_HANDLER" ) );
-		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFFE, tsz );
-m_pAttrHandler->SetAttrRange( 0xfffe, 0xffff, ATTR_DW );
-		_tcscpy( tsz, _T( "NMI_HANDLER" ) );
-		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFFC, tsz );
-m_pAttrHandler->SetAttrRange( 0xfffc, 0xfffd, ATTR_DW );
-		_tcscpy( tsz, _T( "SWI_HANDLER" ) );
-		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFFA, tsz );
-m_pAttrHandler->SetAttrRange( 0xfffa, 0xfffb, ATTR_DW );
-		_tcscpy( tsz, _T( "IRQ1_HANDLER" ) );
-		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFF8, tsz );
-m_pAttrHandler->SetAttrRange( 0xfff8, 0xfff9, ATTR_DW );
-		_tcscpy( tsz, _T( "ICF_HANDLER" ) );
-		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFF6, tsz );  // Input Capture
-m_pAttrHandler->SetAttrRange( 0xfff6, 0xfff7, ATTR_DW );
-		_tcscpy( tsz, _T( "OCF_HANDLER" ) );
-		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFF4, tsz );  // Output Compare
-m_pAttrHandler->SetAttrRange( 0xfff4, 0xfff5, ATTR_DW );
-		_tcscpy( tsz, _T( "TOF_HANDLER" ) );
-		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFF2, tsz );  // Timer Overflow
-m_pAttrHandler->SetAttrRange( 0xfff2, 0xfff3, ATTR_DW );
-		_tcscpy( tsz, _T( "SCI_HANDLER" ) );
-		m_pLabelHandler->RegisterVector( pbyData, m_dwStartAddress, 0xFFF0, tsz );  // Serial I/O
-m_pAttrHandler->SetAttrRange( 0xfff0, 0xfff1, ATTR_DW );
+
+		RegisterVector( pbyData, m_dwStartAddress, 0xFFF0, _T( "VEC_SCI" ), _T( "Serial Communications Interface Interrupt" ) );
+		RegisterVector( pbyData, m_dwStartAddress, 0xFFF2, _T( "VEC_ICI" ), _T( "Timer Input Capture Interrupt" ) );
+		RegisterVector( pbyData, m_dwStartAddress, 0xFFF4, _T( "VEC_OCI" ), _T( "Timer Output Compare Interrupt" ) );
+		RegisterVector( pbyData, m_dwStartAddress, 0xFFF6, _T( "VEC_TOI" ), _T( "Timer Overflow Interrupt" ) );
+		RegisterVector( pbyData, m_dwStartAddress, 0xFFF8, _T( "VEC_IRQ1" ), _T( "External Interrupt (IRQ1)" ) );
+		RegisterVector( pbyData, m_dwStartAddress, 0xFFFA, _T( "VEC_SWI" ), _T( "Software Interrupt (SWI)" ) );
+		RegisterVector( pbyData, m_dwStartAddress, 0xFFFC, _T( "VEC_NMI" ), _T( "Non-Maskable Interrupt (NMI)" ) );
+		RegisterVector( pbyData, m_dwStartAddress, 0xFFFE, _T( "VEC_RESET" ), _T( "Reset Vector" ) );
 		GlobalUnlock( m_hBin );
 //
-		_tcscpy( tsz, _T( "RMCR" ) );
-		m_pLabelHandler->SetEquName( 0x0000, tsz ); // "RAM Control Register"
-		_tcscpy( tsz, _T( "DDR1" ) ); // "Port 1 Data Direction"
-		m_pLabelHandler->SetEquName( 0x0001, tsz );
-		_tcscpy( tsz, _T( "DDR2" ) ); // "Port 2 Data Direction"
-		m_pLabelHandler->SetEquName( 0x0002, tsz );
-		_tcscpy( tsz, _T( "PORT1" ) ); // "Port 1 Data Register"
-		m_pLabelHandler->SetEquName( 0x0003, tsz );
-		_tcscpy( tsz, _T( "PORT2" ) ); // "Port 2 Data Register"
-		m_pLabelHandler->SetEquName( 0x0004, tsz );
-		_tcscpy( tsz, _T( "DDR3" ) ); // "Port 3 Data Direction"
-		m_pLabelHandler->SetEquName( 0x0005, tsz );
-		_tcscpy( tsz, _T( "DDR4" ) ); // "Port 4 Data Direction"
-		m_pLabelHandler->SetEquName( 0x0006, tsz );
-		_tcscpy( tsz, _T( "PORT3" ) ); // "Port 3 Data Register"
-		m_pLabelHandler->SetEquName( 0x0007, tsz );
-		_tcscpy( tsz, _T( "PORT4" ) ); // "Port 4 Data Register"
-		m_pLabelHandler->SetEquName( 0x0008, tsz );
-		_tcscpy( tsz, _T( "TCSR" ) ); // "Timer Control/Status"
-		m_pLabelHandler->SetEquName( 0x0009, tsz );
-		_tcscpy( tsz, _T( "FRCH" ) ); // "Free Running Counter High"
-		m_pLabelHandler->SetEquName( 0x000a, tsz );
-		_tcscpy( tsz, _T( "FRCL" ) ); // "Free Running Counter Low"
-		m_pLabelHandler->SetEquName( 0x000b, tsz );
-		_tcscpy( tsz, _T( "OCR1H" ) ); // "Output Compare High"
-		m_pLabelHandler->SetEquName( 0x000c, tsz );
-		_tcscpy( tsz, _T( "OCR1H" ) ); // "Output Compare Low"
-		m_pLabelHandler->SetEquName( 0x000d, tsz );
-		_tcscpy( tsz, _T( "ICRH" ) ); // "Input Capture High"
-		m_pLabelHandler->SetEquName( 0x000e, tsz );
-		_tcscpy( tsz, _T( "ICRL" ) ); // "Input Capture Low"
-		m_pLabelHandler->SetEquName( 0x000f, tsz );
-		_tcscpy( tsz, _T( "P3CSR" ) ); // "Port 3 Control/Status"
-		m_pLabelHandler->SetEquName( 0x0010, tsz );
-		_tcscpy( tsz, _T( "RMCR2" ) ); // "Rate/Mode Control Register"
-		m_pLabelHandler->SetEquName( 0x0011, tsz );
-		_tcscpy( tsz, _T( "TRCSR" ) ); // "Tx/Rx Control Status"
-		m_pLabelHandler->SetEquName( 0x0012, tsz );
-		_tcscpy( tsz, _T( "RDR" ) ); // "Receive Data Register"
-		m_pLabelHandler->SetEquName( 0x0013, tsz );
-		_tcscpy( tsz, _T( "TDR" ) ); // "Transmit Data Register"
-		m_pLabelHandler->SetEquName( 0x0014, tsz );
+		m_pLabelHandler->RegisterEqu( 0x0000, _T( "P1DDR" ), _T( "Port 1 Data Direction Register" ) );
+		m_pLabelHandler->RegisterEqu( 0x0001, _T( "P2DDR" ), _T( "Port 2 Data Direction Register" ) );
+		m_pLabelHandler->RegisterEqu( 0x0002, _T( "PORT1" ), _T( "Port 1 Data Register" ) );
+		m_pLabelHandler->RegisterEqu( 0x0003, _T( "PORT2" ), _T( "Port 2 Data Register" ) );
+		m_pLabelHandler->RegisterEqu( 0x0004, _T( "P3DDR" ), _T( "Port 3 Data Direction Register" ) );
+		m_pLabelHandler->RegisterEqu( 0x0005, _T( "P4DDR" ), _T( "Port 4 Data Direction Register" ) );
+		m_pLabelHandler->RegisterEqu( 0x0006, _T( "PORT3" ), _T( "Port 3 Data Register" ) );
+		m_pLabelHandler->RegisterEqu( 0x0007, _T( "PORT4" ), _T( "Port 4 Data Register" ) );
+// timer
+		m_pLabelHandler->RegisterEqu( 0x0008, _T( "TCSR" ), _T( "Timer Control and Status Register" ) );
+		m_pLabelHandler->RegisterEqu( 0x0009, _T( "FRCH" ), _T( "Free-Running Counter High Byte" ) );
+		m_pLabelHandler->RegisterEqu( 0x000A, _T( "FRCL" ), _T( "Free-Running Counter Low Byte" ) );
+		m_pLabelHandler->RegisterEqu( 0x000B, _T( "OCRH" ), _T( "Output Compare Register High Byte" ) );
+		m_pLabelHandler->RegisterEqu( 0x000C, _T( "OCRL" ), _T( "Output Compare Register Low Byte" ) );
+		m_pLabelHandler->RegisterEqu( 0x000D, _T( "ICRH" ), _T( "Input Capture Register High Byte" ) );
+		m_pLabelHandler->RegisterEqu( 0x000E, _T( "ICRL" ), _T( "Input Capture Register Low Byte" ) );
+		m_pLabelHandler->RegisterEqu( 0x000F, _T( "P3CSR" ), _T( "Port 3 Control and Status Register" ) );
+// SCI and RAM Control registers
+		m_pLabelHandler->RegisterEqu( 0x0010, _T( "RMCR" ), _T( "Rate and Mode Control Register" ) );
+		m_pLabelHandler->RegisterEqu( 0x0011, _T( "TRCSR" ), _T( "Transmit/Receive Control and Status Register" ) );
+		m_pLabelHandler->RegisterEqu( 0x0012, _T( "RDR" ), _T( "Receive Data Register" ) );
+		m_pLabelHandler->RegisterEqu( 0x0013, _T( "TDR" ), _T( "Transmit Data Register" ) );
+		m_pLabelHandler->RegisterEqu( 0x0014, _T( "RAMCR" ), _T( "RAM Control Register" ) );
 	}
 	return bResult;
+}
+
+VOID CDisasm6801::RegisterVector( PBYTE pbyData, DWORD dwBaseAddr, DWORD dwVectorAddr, PCTSTR pctszVectorName, PCTSTR pctszComment )
+{
+	if ( m_pLabelHandler ) {
+		if ( m_pAttrHandler ) {
+			m_pLabelHandler->RegisterVector( pbyData, dwBaseAddr, dwVectorAddr, pctszVectorName, pctszComment );
+			m_pAttrHandler->SetAttrRange( dwVectorAddr, ( dwVectorAddr + 1 ) & 0xffff, ATTR_DW );
+		}
+	}
 }
 
 BOOL CDisasm6801::DoDisasm( VOID )
@@ -808,7 +783,7 @@ PBYTE pbyData;
 DWORD i, dwAddr, dwCurAddress, dwLength, dwTmp;
 TCHAR tsz[ MAX_PATH * 3 ], tszTmp[ MAX_PATH ], tszAddress[ MAX_PATH ], tszMachineCode[ MAX_PATH ], tszOperand[ MAX_PATH ];
 PTSTR ptszLabel, ptszTmp;
-PCTSTR pctszMnemonic;
+PCTSTR pctszMnemonic, pctszComment;
 POpcodeInfo pInfo;
 #ifndef _SUPPORT_LABEL_ALIAS
 PTSTR ptszLabel;
@@ -827,12 +802,13 @@ CLabelHandler::PLabelNameNode pLabelNode;
 		bTemp = FALSE;
 		for ( i = 0; i < _MAX_ADDRESS; i++ ) {
 			if ( m_pLabelHandler->IsEqu( i ) ) {
-				ptszTmp = m_pLabelHandler->GetLabelName( i );
+#ifndef _SUPPORT_LABEL_ALIAS
+				ptszTmp = m_pLabelHandler->GetEquName( i );
 				if ( !ptszTmp )
 					continue;
 				FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
 				tsz[ _countof( tsz ) - 1 ] = '\0';
-				CopyMemory( tsz + ( 6 + 3 * 3 + 2 ) * sizeof( TCHAR ), m_pLabelHandler->GetLabelName( i ), _tcslen( m_pLabelHandler->GetLabelName( i ) ) * sizeof( TCHAR ) );
+				CopyMemory( tsz + ( 6 + 3 * 3 + 2 ) * sizeof( TCHAR ), ptszTmp, _tcslen( ptszTmp ) * sizeof( TCHAR ) );
 				if ( _tcslen( ptszTmp ) > 12 ) {
 					CutLastSpace( tsz, _countof( tsz ) );
 					_tcscat( tsz, _T( "\r\n" ) );
@@ -849,6 +825,39 @@ CLabelHandler::PLabelNameNode pLabelNode;
 				ConvertToUseTab( tsz, m_uiTab );
 				WriteString( tsz );
 				bTemp = TRUE;
+#else
+				pLabelNode = m_pLabelHandler->GetLabelAliasList( i );
+				while ( pLabelNode ) {
+					if ( pLabelNode->bIsEqu ) {
+						ptszTmp = pLabelNode->tszName;
+						FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
+						tsz[ _countof( tsz ) - 1 ] = '\0';
+						CopyMemory( tsz + ( 6 + 3 * 3 + 2 ) * sizeof( TCHAR ), ptszTmp, _tcslen( ptszTmp ) * sizeof( TCHAR ) );
+						if ( _tcslen( ptszTmp ) > 12 ) {
+							CutLastSpace( tsz, _countof( tsz ) );
+							_tcscat( tsz, _T( "\r\n" ) );
+							ConvertToUseTab( tsz, m_uiTab );
+							WriteString( tsz );
+							FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
+							tsz[ _countof( tsz ) - 1 ] = '\0';
+						}
+						CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 ) * sizeof( TCHAR ), _T( "EQU" ), 3 * sizeof( TCHAR ) );
+						wsprintf( tszOperand, _T( "$%04X" ), i );
+						CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 + 8 ) * sizeof( TCHAR ), tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
+						if ( pLabelNode->tszComment[ 0 ] != _T( '\0' ) ) {
+							CutLastSpace( tsz, _countof( tsz ) );
+							wsprintf( tszTmp, _T( " ; %s" ), pLabelNode->tszComment );
+							_tcscat( tsz, tszTmp );
+						}
+						CutLastSpace( tsz, _countof( tsz ) );
+						_tcscat( tsz, _T( "\r\n" ) );
+						ConvertToUseTab( tsz, m_uiTab );
+						WriteString( tsz );
+						bTemp = TRUE;
+					}
+					pLabelNode = pLabelNode->pNext;
+				}
+#endif
 			}
 		}
 		if ( bTemp ) {
@@ -873,9 +882,10 @@ CLabelHandler::PLabelNameNode pLabelNode;
 			_tcscpy( tszAddress, _T( "" ) );
 			_tcscpy( tszMachineCode, _T( "" ) );
 			ptszLabel = nullptr;
+			pctszComment = nullptr;
 			dwCurAddress = ( dwAddr + m_dwStartAddress ) & 0xffff;
 
-			if ( m_pAttrHandler && m_pAttrHandler->IsData( (WORD)dwCurAddress ) ) {
+			if ( m_pAttrHandler->IsData( (WORD)dwCurAddress ) ) {
 				dwLength = OutputDataDirective( pbyData, dwAddr, dwCurAddress );
 				dwAddr += dwLength;
 				continue;
@@ -902,6 +912,11 @@ CLabelHandler::PLabelNameNode pLabelNode;
 				ptszLabel = m_pLabelHandler->GetLabel( dwCurAddress );
 #else
 				pLabelNode = m_pLabelHandler->GetLabelAliasList( dwCurAddress );
+				if ( pLabelNode ) {
+					if ( pLabelNode->tszComment[ 0 ] != _T( '\0' ) ) {
+						pctszComment = pLabelNode->tszComment;
+					}
+				}
 #endif
 				pctszMnemonic = GetMnemonicStr( (MnemonicID)pInfo->byMnemonicId );
 				if ( pctszMnemonic ) {
@@ -1003,6 +1018,21 @@ CLabelHandler::PLabelNameNode pLabelNode;
 					_tcscpy( tsz + 6 + 3 * 3 + 2 + 12 + 3, _T( "???" ) );
 				}
 #endif
+				if ( pctszComment ) {
+					if ( _tcslen( tszOperand ) > 14 ) {
+						CutLastSpace( tsz, _countof( tsz ) );
+						if ( pctszComment ) {
+							wsprintf( tszTmp, _T( " ; %s" ), pctszComment );
+							_tcscat( tsz, tszTmp );
+						}
+					} else {
+//FE88  7D 00	AA	 LFE88:			TST		RAM_AA
+//1234567890123456789012345678901234567890123456789012345
+//														   ; Comment
+						tsz[ 58 ] = _T( ';' );
+						CopyMemory( tsz + 60 * sizeof( TCHAR ), pctszComment, _tcslen( pctszComment ) * sizeof( TCHAR ) );
+					}
+				}
 				CutLastSpace( tsz, _countof( tsz ) );
 				_tcscat( tsz, _T( "\r\n" ) );
 				ConvertToUseTab( tsz, m_uiTab );
@@ -1029,6 +1059,7 @@ DWORD dwStrLen;
 DWORD dwCheckAddr;
 TCHAR tszStrBuf[ MAX_PATH ] = { 0 };
 PTSTR ptszLabelName;
+PCTSTR pctszComment = nullptr;
 
 #ifndef _SUPPORT_LABEL_ALIAS
 PTSTR ptszLabel = nullptr;
@@ -1106,6 +1137,11 @@ CLabelHandler::PLabelNameNode pLabelNode = nullptr;
 		ptszLabel = m_pLabelHandler->GetLabel( dwCurAddress );
 #else
 		pLabelNode = m_pLabelHandler->GetLabelAliasList( dwCurAddress );
+		if ( pLabelNode ) {
+			if ( pLabelNode->tszComment[ 0 ] != _T( '\0' ) ) {
+				pctszComment = pLabelNode->tszComment;
+			}
+		}
 #endif
 
 		FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
@@ -1140,6 +1176,21 @@ CLabelHandler::PLabelNameNode pLabelNode = nullptr;
 		CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 ) * sizeof( TCHAR ), tszMnemonic, _tcslen( tszMnemonic ) * sizeof( TCHAR ) );
 		CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 + 8 ) * sizeof( TCHAR ), tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
 #endif
+		if ( pctszComment ) {
+			if ( _tcslen( tszOperand ) > 14 ) {
+				CutLastSpace( tsz, _countof( tsz ) );
+				if ( pctszComment ) {
+					wsprintf( tszTmp, _T( " ; %s" ), pctszComment );
+					_tcscat( tsz, tszTmp );
+				}
+			} else {
+//FE88  7D 00	AA	 LFE88:			TST		RAM_AA
+//1234567890123456789012345678901234567890123456789012345
+//														   ; Comment
+				tsz[ 58 ] = _T( ';' );
+				CopyMemory( tsz + 60 * sizeof( TCHAR ), pctszComment, _tcslen( pctszComment ) * sizeof( TCHAR ) );
+			}
+		}
 		CutLastSpace( tsz, _countof( tsz ) );
 		_tcscat( tsz, _T( "\r\n" ) );
 		ConvertToUseTab( tsz, m_uiTab );
