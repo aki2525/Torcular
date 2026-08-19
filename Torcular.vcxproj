@@ -129,6 +129,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="AddressAttrHandler.h" />
     <ClInclude Include="LabelHandler.h" />
     <ClInclude Include="Disasm6801.h" />
     <ClInclude Include="framework.h" />
@@ -137,6 +138,7 @@
     <ClInclude Include="Torcular.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AddressAttrHandler.cpp" />
     <ClCompile Include="LabelHandler.cpp" />
     <ClCompile Include="Disasm6801.cpp" />
     <ClCompile Include="Torcular.cpp" />

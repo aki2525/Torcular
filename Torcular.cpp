@@ -3,6 +3,7 @@
 
 #include "framework.h"
 #include "Torcular.h"
+#include "Disasm6801.h"
 
 // options...
 PCSTR OPT_HELP[] = { "help", "h", NULL };
@@ -316,6 +317,32 @@ LPVOID pMsgBuf;
 	AddMessage( (PTSTR)pMsgBuf );
 	LocalFree( pMsgBuf );
 }
+
+//BOOL ExportDataAttrs( HANDLE hFile )
+//{
+//BOOL bResult = FALSE;
+//
+//	if ( g_pThis ) {
+//		if ( g_pThis->m_pAttrHandler ) {
+//			bResult = g_pThis->m_pAttrHandler->ExportDataAttrs( hFile );
+//		}
+//	}
+//	return bResult;
+//}
+//
+//BOOL ImportDataAttrs( PCHAR pBuffer )
+//{
+//BOOL bResult = FALSE;
+//
+//	if ( pBuffer ) {
+//		if ( g_pThis ) {
+//			if ( g_pThis->m_pAttrHandler ) {
+//				bResult = g_pThis->m_pAttrHandler->ImportDataAttrs( pBuffer );
+//			}
+//		}
+//	}
+//	return bResult;
+//}
 
 // -----------------------------------------------------------------------------------------------
 PCHAR _WideToAnsi( PWCHAR pwStr )

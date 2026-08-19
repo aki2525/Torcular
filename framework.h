@@ -4,6 +4,8 @@
 
 #pragma once
 
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN             // Windows ヘッダーからほとんど使用されていない部分を除外する
 // Windows ヘッダー ファイル

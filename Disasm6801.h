@@ -1,9 +1,8 @@
 #pragma once
 
-#define _CRT_SECURE_NO_WARNINGS
 #include "framework.h"
 #include "LabelHandler.h"
-
+#include "AddressAttrHandler.h"
 
 enum AddressingMode {
 	MODE_INVALID = 0,
@@ -152,9 +151,10 @@ enum MnemonicID {
 typedef struct {
 	BYTE byMnemonicId;
 	BYTE byLength; // opcode bytes
-	BYTE byMode; // addressing mode( 3bit ) + FL_VALID( 1bit ) + FL_JUMP( 1bit )
+	BYTE byMode; // addressing mode( 3bit )
 	BYTE byType; // OperandType
 } OpcodeInfo, *POpcodeInfo;
+
 
 class CDisasm6801 {
 public:
@@ -173,9 +173,15 @@ public:
 	VOID Init( VOID );
 	BOOL Set6801Vector( VOID );
 
+	BOOL ImportProject( PTSTR ptszFilename );
+	BOOL ExportProject( PTSTR ptszFilename );
+
 	PCTSTR GetMnemonicStr( MnemonicID Id );
 	CLabelHandler* m_pLabelHandler;
+	CAddressAttrHandler* m_pAttrHandler;
 private:
+	DWORD OutputDataDirective( PBYTE pbyData, DWORD dwAddr, DWORD dwCurAddress );
+//
 	TCHAR m_tszBinPath[ MAX_PATH * 2 ];
 	HGLOBAL m_hBin;
 	PBYTE m_pbyBin;
