@@ -517,14 +517,14 @@ PBYTE pbyData = NULL;
 	if ( pbyData ) {
 		bResult = TRUE;
 
-		RegisterVector( pbyData, m_dwStartAddress, 0xFFF0, _T( "VEC_SCI" ), _T( "Serial Communications Interface Interrupt" ) );
-		RegisterVector( pbyData, m_dwStartAddress, 0xFFF2, _T( "VEC_ICI" ), _T( "Timer Input Capture Interrupt" ) );
-		RegisterVector( pbyData, m_dwStartAddress, 0xFFF4, _T( "VEC_OCI" ), _T( "Timer Output Compare Interrupt" ) );
-		RegisterVector( pbyData, m_dwStartAddress, 0xFFF6, _T( "VEC_TOI" ), _T( "Timer Overflow Interrupt" ) );
-		RegisterVector( pbyData, m_dwStartAddress, 0xFFF8, _T( "VEC_IRQ1" ), _T( "External Interrupt (IRQ1)" ) );
-		RegisterVector( pbyData, m_dwStartAddress, 0xFFFA, _T( "VEC_SWI" ), _T( "Software Interrupt (SWI)" ) );
-		RegisterVector( pbyData, m_dwStartAddress, 0xFFFC, _T( "VEC_NMI" ), _T( "Non-Maskable Interrupt (NMI)" ) );
-		RegisterVector( pbyData, m_dwStartAddress, 0xFFFE, _T( "VEC_RESET" ), _T( "Reset Vector" ) );
+		RegisterVector( pbyData, m_dwStartAddress, 0xFFF0, _T( "SCI_INT" ), _T( "Serial Communications Interface Interrupt" ) );
+		RegisterVector( pbyData, m_dwStartAddress, 0xFFF2, _T( "ICI_INT" ), _T( "Timer Input Capture Interrupt" ) );
+		RegisterVector( pbyData, m_dwStartAddress, 0xFFF4, _T( "OCI_INT" ), _T( "Timer Output Compare Interrupt" ) );
+		RegisterVector( pbyData, m_dwStartAddress, 0xFFF6, _T( "TOI_INT" ), _T( "Timer Overflow Interrupt" ) );
+		RegisterVector( pbyData, m_dwStartAddress, 0xFFF8, _T( "IRQ1_INT" ), _T( "External Interrupt (IRQ1)" ) );
+		RegisterVector( pbyData, m_dwStartAddress, 0xFFFA, _T( "SWI_INT" ), _T( "Software Interrupt (SWI)" ) );
+		RegisterVector( pbyData, m_dwStartAddress, 0xFFFC, _T( "NMI_ENTRY" ), _T( "Non-Maskable Interrupt (NMI)" ) );
+		RegisterVector( pbyData, m_dwStartAddress, 0xFFFE, _T( "RESET_ENTRY" ), _T( "Reset" ) );
 		GlobalUnlock( m_hBin );
 //
 		m_pLabelHandler->RegisterEqu( 0x0000, _T( "P1DDR" ), _T( "Port 1 Data Direction Register" ) );
@@ -556,10 +556,14 @@ PBYTE pbyData = NULL;
 
 VOID CDisasm6801::RegisterVector( PBYTE pbyData, DWORD dwBaseAddr, DWORD dwVectorAddr, PCTSTR pctszVectorName, PCTSTR pctszComment )
 {
+	if ( dwBaseAddr >= _MAX_ADDRESS )
+		return;
+	if ( dwVectorAddr >= ( _MAX_ADDRESS - 1 ) )
+		return;
 	if ( m_pLabelHandler ) {
 		if ( m_pAttrHandler ) {
 			m_pLabelHandler->RegisterVector( pbyData, dwBaseAddr, dwVectorAddr, pctszVectorName, pctszComment );
-			m_pAttrHandler->SetAttrRange( dwVectorAddr, ( dwVectorAddr + 1 ) & 0xffff, ATTR_DW );
+			m_pAttrHandler->SetAttrRange( dwVectorAddr, dwVectorAddr + 1, ATTR_DW );
 		}
 	}
 }
