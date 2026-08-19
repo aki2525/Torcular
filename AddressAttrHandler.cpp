@@ -246,7 +246,7 @@ DWORD dwAddr;
 		return;
 
 	for ( dwAddr = dwStartAddr; dwAddr <= dwEndAddr; dwAddr++ ) {
-		m_byAttr[ dwAddr ] = attr;
+		m_byAttr[ dwAddr & 0xffff ] = attr;
 	}
 }
 
