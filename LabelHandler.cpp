@@ -747,7 +747,7 @@ TCHAR tsz[ MAX_PATH * 3 ];
 PLabelNode pCurr;
 PLabelNameNode pPrimary, pAlias;
 
-	wsprintf( tsz, _T( "\r\n========================================\r\n" ) );
+	wsprintf( tsz, _T( "========================================\r\n" ) );
 	WriteString( tsz );
 	wsprintf( tsz, _T( "\t\tCROSS REFERENCE TABLE\r\n" ) );
 	WriteString( tsz );

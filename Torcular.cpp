@@ -2,6 +2,7 @@
 //
 
 #include "framework.h"
+#include <shobjidl.h>
 #include "Torcular.h"
 #include "Disasm6801.h"
 
@@ -17,6 +18,11 @@ HWND g_hwndView = NULL;
 LONG g_lClientX, g_lClientY;
 CDisasm6801* g_pThis = nullptr;
 
+// Statics...
+static HANDLE g_hToWrite = nullptr;
+static BOOL g_bWriteError = FALSE;
+static DWORD g_dwWriteError = 0;
+
 // Option...
 BOOL g_bViewToWindow = TRUE;
 
@@ -26,11 +32,24 @@ BOOL InitInstance( HINSTANCE hInstance, INT nCmdShow );
 LRESULT CALLBACK WndProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
 INT_PTR CALLBACK About( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
 BOOL GetOption( VOID );
+BOOL MakeCrossReference( HWND hwnd );
+BOOL ImportProjectFile( HWND hwnd );
+BOOL ExportProjectFile( HWND hwnd );
+
+COMDLG_FILTERSPEC fpProjTypes[] = {
+	{ L"Project file(*.prj68)", L"*.prj68" },
+	{ L"All file(*.*)", L"*.*" }
+};
+COMDLG_FILTERSPEC fpXrefTypes[] = {
+	{ L"Project file(*.xref68)", L"*.xref68" },
+	{ L"All file(*.*)", L"*.*" }
+};
 
 INT APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR pCmdLine, _In_ INT nCmdShow )
 {
 MSG msg;
 HACCEL hAccelTable;
+HRESULT hr;
 HMODULE hRichEdit;
 UNREFERENCED_PARAMETER( hPrevInstance );
 UNREFERENCED_PARAMETER( pCmdLine );
@@ -38,6 +57,10 @@ UNREFERENCED_PARAMETER( pCmdLine );
 	LoadString( hInstance, IDS_APP_TITLE, g_tszTitle, _countof( g_tszWindowClass ) );
 	LoadString( hInstance, IDC_TORCULAR, g_tszWindowClass, _countof( g_tszWindowClass ) );
 	MyRegisterClass( hInstance );
+
+	hr = CoInitializeEx( NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE );
+	if ( FAILED( hr ) )
+		return FALSE;
 
 	hRichEdit = LoadLibrary( _T( "Msftedit.dll" ) );
 
@@ -52,8 +75,11 @@ UNREFERENCED_PARAMETER( pCmdLine );
 			DispatchMessage( &msg );
 		}
 	}
+
 	if ( hRichEdit )
 		FreeLibrary( hRichEdit );
+	CoUninitialize();
+
 	return (INT)msg.wParam;
 }
 
@@ -153,6 +179,15 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 			if ( bReady )
 				g_pThis->DoDisasm();
 			break;
+		case IDM_MAKE_REFFILE:
+			MakeCrossReference( hWnd );
+			break;
+		case IDM_IMPORT_PROJECT:
+			ImportProjectFile( hWnd );
+			break;
+		case IDM_EXPORT_PROJECT:
+			ExportProjectFile( hWnd );
+			break;
 		default:
 			return DefWindowProc( hWnd, uMsg, wParam, lParam );
 		}
@@ -197,12 +232,92 @@ UNREFERENCED_PARAMETER( lParam );
 
 VOID WriteString( PTSTR ptszStr )
 {
-	if ( g_pThis )
-		g_pThis->WriteToFile( ptszStr );
+	//if ( g_pThis )
+	//	g_pThis->WriteToFile( ptszStr );
+	WriteToFile( ptszStr );
 	if ( g_bViewToWindow ) {
 		AddMessage( ptszStr );
 	}
 }
+
+VOID CloseWriteFileHandle( HANDLE hFile )
+{
+TCHAR tsz[ MAX_PATH ];
+
+	if ( !g_hToWrite ) {
+		_tcscpy( tsz, _T( "Warnings : write file note opened(internal error).\r\n" ) );
+		AddMessage( tsz );
+	} else {
+		if ( g_hToWrite != hFile ) {
+			_tcscpy( tsz, _T( "Warnings : write and close file handle was diffrent(internal error).\r\n" ) );
+			AddMessage( tsz );
+		}
+		CloseHandle( g_hToWrite );
+	}
+	g_hToWrite = nullptr;
+}
+
+VOID SetWriteFileHandle( HANDLE hFile )
+{
+TCHAR tsz[ MAX_PATH ];
+
+	if ( g_hToWrite ) {
+		_tcscpy( tsz, _T( "Warnings : close writing file, yet?(internal error)\r\n" ) );
+		AddMessage( tsz );
+	}
+	g_hToWrite = hFile;
+	g_bWriteError = FALSE;
+	g_dwWriteError = 0;
+}
+
+BOOL GetOptionViewWindow( VOID )
+{
+	return g_bViewToWindow;
+}
+
+VOID SetOptionViewWindow( BOOL bOptionView )
+{
+	g_bViewToWindow = bOptionView;
+}
+
+BOOL WriteToFile( PTSTR ptszStr )
+{
+BOOL bResult = FALSE;
+DWORD dwWrite, dwWritten;
+
+	if ( !ptszStr )
+		return bResult;
+	if ( !g_hToWrite )
+		return bResult;
+	if ( g_bWriteError )
+		return bResult;
+
+	dwWrite = (DWORD)_tcslen( ptszStr );
+	bResult = WriteFile( g_hToWrite, ptszStr, dwWrite, &dwWritten, NULL );
+	if ( dwWrite != dwWritten ) {
+		bResult = FALSE;
+	}
+	if ( !bResult ) {
+		g_bWriteError = TRUE;
+		g_dwWriteError = GetLastError();
+	}
+	return bResult;
+}
+
+BOOL GetFileWriteError( BOOL bViewError )
+{
+PVOID pMsgBuf;
+
+	if ( g_bWriteError ) {
+		if ( bViewError ) {
+			FormatMessage( FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, g_dwWriteError, MAKELANGID( LANG_NEUTRAL, SUBLANG_DEFAULT ), (PTSTR)&pMsgBuf, 0, NULL );
+			AddMessage( (PTSTR)pMsgBuf );
+			LocalFree( pMsgBuf );
+		}
+	}
+	return g_bWriteError;
+}
+
 
 VOID AddMessage( PTSTR ptszStr )
 {
@@ -343,6 +458,157 @@ LPVOID pMsgBuf;
 //	}
 //	return bResult;
 //}
+
+BOOL MakeCrossReference( HWND hwnd )
+{
+INT iRet;
+TCHAR tszPath[ MAX_PATH ];
+BOOL bResult = FALSE;
+PWSTR pszFilePath = nullptr;
+HRESULT hr;
+IShellItem* pItem;
+IFileSaveDialog* pFileSave = nullptr;
+
+	if ( !g_pThis )
+		return bResult;
+	if ( !g_pThis->PrepareMakeCrossReference() )
+		return bResult;
+
+	hr = CoCreateInstance( CLSID_FileSaveDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS( &pFileSave ) );
+	if ( SUCCEEDED( hr ) ) {
+		pFileSave->SetFileTypes( _countof( fpXrefTypes ), fpXrefTypes );
+		pFileSave->SetFileTypeIndex( 1 );
+		pFileSave->SetDefaultExtension( L"xref68" );
+		pFileSave->SetTitle( L"make Cross reference File" );
+
+		hr = pFileSave->Show( hwnd );
+		if ( SUCCEEDED( hr ) ) {
+			hr = pFileSave->GetResult( &pItem );
+			if ( SUCCEEDED( hr ) ) {
+				hr = pItem->GetDisplayName( SIGDN_FILESYSPATH, &pszFilePath );
+#ifndef _UNICODE
+				if ( SUCCEEDED( hr ) ) {
+					iRet = WideCharToMultiByte( CP_ACP, 0, pszFilePath, -1, tszPath, sizeof( tszPath ), NULL, NULL );
+					if ( iRet > 0 ) {
+						bResult = TRUE;
+					}
+#else
+					_tcscpy( tszPath, pszFilePath );
+					bResult = TRUE;
+#endif
+					CoTaskMemFree( pszFilePath );
+					pItem->Release();
+				}
+			}
+		}
+		pFileSave->Release();
+	}
+	if ( bResult ) {
+		bResult = g_pThis->ExportCrossReferenceTable( tszPath );
+	}
+
+	return bResult;
+}
+
+BOOL ImportProjectFile( HWND hwnd )
+{
+INT iRet;
+BOOL bResult = FALSE;
+TCHAR tszPath[ MAX_PATH ];
+PWSTR pwszFilePath = NULL;
+HRESULT hr;
+IShellItem* pItem = NULL;
+IFileOpenDialog* pFileOpen = NULL;
+
+	if ( !g_pThis )
+		return bResult;
+	if ( !hwnd )
+		return bResult;
+
+	hr = CoCreateInstance( CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS( &pFileOpen ) );
+	if ( SUCCEEDED( hr ) ) {
+		pFileOpen->SetFileTypes( _countof( fpProjTypes ), fpProjTypes );
+		pFileOpen->SetFileTypeIndex( 1 );
+		pFileOpen->SetTitle( L" Import Project file" );
+		hr = pFileOpen->Show( hwnd );
+		if ( SUCCEEDED( hr ) ) {
+			hr = pFileOpen->GetResult( &pItem );
+			if ( SUCCEEDED( hr ) ) {
+				hr = pItem->GetDisplayName( SIGDN_FILESYSPATH, &pwszFilePath );
+				if ( SUCCEEDED( hr ) ) {
+#ifndef _UNICODE
+					iRet = WideCharToMultiByte( CP_ACP, 0, pwszFilePath, -1, tszPath, sizeof( tszPath ), NULL, NULL );
+					if ( iRet > 0 ) {
+						bResult = TRUE;
+					}
+#else
+					_tcscpy( tszPath, pwszFilePath );
+					bResult = TRUE;
+#endif
+					CoTaskMemFree( pwszFilePath );
+				}
+				pItem->Release();
+			}
+		}
+		pFileOpen->Release();
+	}
+	if ( bResult ) {
+		bResult = g_pThis->ImportProject( tszPath );
+	}
+
+	return bResult;
+}
+
+BOOL ExportProjectFile( HWND hwnd )
+{
+INT iRet;
+TCHAR tszPath[ MAX_PATH ];
+BOOL bResult = FALSE;
+PWSTR pwszFilePath = nullptr;
+HRESULT hr;
+IShellItem* pItem;
+IFileSaveDialog* pFileSave = nullptr;
+
+	if ( !g_pThis )
+		return bResult;
+	if ( !hwnd )
+		return bResult;
+
+	hr = CoCreateInstance( CLSID_FileSaveDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS( &pFileSave ) );
+	if ( SUCCEEDED( hr ) ) {
+		pFileSave->SetFileTypes( _countof( fpProjTypes ), fpProjTypes );
+		pFileSave->SetFileTypeIndex( 1 );
+		pFileSave->SetDefaultExtension( L"prj68" );
+		pFileSave->SetTitle( L"Export Project File" );
+
+		hr = pFileSave->Show( hwnd );
+		if ( SUCCEEDED( hr ) ) {
+			hr = pFileSave->GetResult( &pItem );
+			if ( SUCCEEDED( hr ) ) {
+				hr = pItem->GetDisplayName( SIGDN_FILESYSPATH, &pwszFilePath );
+#ifndef _UNICODE
+				if ( SUCCEEDED( hr ) ) {
+					iRet = WideCharToMultiByte( CP_ACP, 0, pwszFilePath, -1, tszPath, sizeof( tszPath ), NULL, NULL );
+					if ( iRet > 0 ) {
+						bResult = TRUE;
+					}
+#else
+					_tcscpy( tszPath, pwszFilePath );
+					bResult = TRUE;
+#endif
+					CoTaskMemFree( pwszFilePath );
+					pItem->Release();
+				}
+			}
+		}
+		pFileSave->Release();
+	}
+	if ( bResult ) {
+		bResult = g_pThis->ExportProject( tszPath );
+	}
+
+	return bResult;
+}
 
 // -----------------------------------------------------------------------------------------------
 PCHAR _WideToAnsi( PWCHAR pwStr )

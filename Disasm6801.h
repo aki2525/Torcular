@@ -4,6 +4,12 @@
 #include "LabelHandler.h"
 #include "AddressAttrHandler.h"
 
+enum {
+	_PASSED_NONE,
+	_PASSED_1 = 0x8000, // processed pass 1
+	_PASSED_2 = 0x4000 // processed pass 2
+};
+
 enum AddressingMode {
 	MODE_INVALID = 0,
 	MODE_INHERENT, // inherent ... opcode only
@@ -168,15 +174,20 @@ public:
 	BOOL DoPass1( VOID );
 	BOOL CreateAsmFile( VOID );
 	BOOL DoPass2( VOID );
-	VOID WriteToFile( PTSTR ptszStr );
-	VOID CloseFiles( VOID );
+//
+	//VOID WriteToFile( PTSTR ptszStr );
+	//VOID CloseFiles( VOID );
 	VOID Init( VOID );
 	BOOL Set6801Vector( VOID );
 
 	BOOL ImportProject( PTSTR ptszFilename );
 	BOOL ExportProject( PTSTR ptszFilename );
+	BOOL ExportCrossReferenceTable( PTSTR ptszFilename );
+	BOOL MakeCrossReference( PTSTR ptszFilename );
 	VOID RegisterVector( PBYTE pbyData, DWORD dwBaseAddr, DWORD dwVectorAddr, PCTSTR pctszVectorName = nullptr, PCTSTR pctszComment = nullptr );
-
+	BOOL PrepareMakeCrossReference();
+	BOOL PrepareExportProject();
+//
 	PCTSTR GetMnemonicStr( MnemonicID Id );
 	CLabelHandler* m_pLabelHandler;
 	CAddressAttrHandler* m_pAttrHandler;
@@ -187,8 +198,8 @@ private:
 	HGLOBAL m_hBin;
 	PBYTE m_pbyBin;
 	DWORD m_dwSizeBin;
-	//DWORD m_dwPC;
-	//DWORD m_dwAdr; // in m_pbyBin
+// status
+	BOOL m_bPassed; // _PASSED_2 and _PASSED_1
 // Mode / Options
 	BOOL m_bViewCrossReference;
 	BOOL m_bNoPass2;

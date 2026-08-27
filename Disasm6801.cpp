@@ -568,12 +568,82 @@ VOID CDisasm6801::RegisterVector( PBYTE pbyData, DWORD dwBaseAddr, DWORD dwVecto
 	}
 }
 
+BOOL CDisasm6801::PrepareMakeCrossReference( VOID )
+{
+BOOL bResult = TRUE;
+
+	if ( !( m_bPassed & _PASSED_1 ) ) {
+		bResult = FALSE;
+	}
+	if ( !( m_bPassed & _PASSED_2 ) ) {
+		bResult = FALSE;
+	}
+	if ( !bResult ) {
+		if ( m_pLabelHandler ) {
+			if ( m_pAttrHandler ) {
+				bResult = ReadBinFile();
+				if ( bResult ) {
+					m_pLabelHandler->Init();
+					bResult = Set6801Vector();
+				}
+				if ( bResult ) {
+					bResult = DoPass1();
+				}
+				if ( bResult ) {
+					bResult = DoPass2();
+				}
+			}
+		}
+	}
+	if ( !( m_bPassed & _PASSED_1 ) ) {
+		bResult = FALSE;
+	}
+	if ( !( m_bPassed & _PASSED_2 ) ) {
+		bResult = FALSE;
+	}
+	return bResult;
+}
+
+BOOL CDisasm6801::PrepareExportProject( VOID )
+{
+BOOL bResult = TRUE;
+
+	if ( !( m_bPassed & _PASSED_1 ) ) {
+		bResult = FALSE;
+	}
+	if ( !( m_bPassed & _PASSED_2 ) ) {
+		bResult = FALSE;
+	}
+	if ( !bResult ) {
+		if ( m_pLabelHandler ) {
+			if ( m_pAttrHandler ) {
+				bResult = ReadBinFile();
+				if ( bResult ) {
+					m_pLabelHandler->Init();
+					bResult = Set6801Vector();
+				}
+				if ( bResult ) {
+					bResult = DoPass1();
+				}
+			}
+		}
+	}
+	if ( !( m_bPassed & _PASSED_1 ) ) {
+		bResult = FALSE;
+	}
+	return bResult;
+}
+
 BOOL CDisasm6801::DoDisasm( VOID )
 {
 BOOL bResult = FALSE;
 
 	if ( m_pLabelHandler )
 		bResult = TRUE;
+	if ( bResult )
+		if ( !m_pAttrHandler )
+			bResult = FALSE;
+
 	if ( bResult )
 		bResult = ReadBinFile();
 	if ( bResult ) {
@@ -588,10 +658,10 @@ BOOL bResult = FALSE;
 		DoPass2();
 	}
 	//CloseFiles();
-	if ( bResult ) {
-		if ( m_bViewCrossReference )
-			m_pLabelHandler->PrintCrossReferenceTable();
-	}
+	//if ( bResult ) {
+	//	if ( m_bViewCrossReference )
+	//		m_pLabelHandler->PrintCrossReferenceTable();
+	//}
 
 	return bResult;
 }
@@ -636,6 +706,7 @@ HGLOBAL hGlobal = nullptr;
 				if ( dwRead == dwSizeLo ) {
 					m_hBin = hGlobal;
 					m_dwSizeBin = dwRead;
+					m_bPassed = _PASSED_NONE;
 					bResult = TRUE;
 				} else {
 					DispError();
@@ -767,6 +838,7 @@ POpcodeInfo pInfo;
 			dwAddr += dwLength;
 		}
 		GlobalUnlock( m_hBin );
+		m_bPassed |= _PASSED_1;
 	}
 	return bResult;
 }
@@ -1045,6 +1117,7 @@ CLabelHandler::PLabelNameNode pLabelNode;
 			dwAddr += dwLength;
 		}
 		GlobalUnlock( m_hBin );
+		m_bPassed |= _PASSED_2;
 	}
 	return bResult;
 }
@@ -1204,13 +1277,13 @@ CLabelHandler::PLabelNameNode pLabelNode = nullptr;
 	return dwLength;
 }
 
-VOID CDisasm6801::WriteToFile( PTSTR ptszStr )
-{
-}
-
-VOID CDisasm6801::CloseFiles( VOID )
-{
-}
+//VOID CDisasm6801::WriteToFile( PTSTR ptszStr )
+//{
+//}
+//
+//VOID CDisasm6801::CloseFiles( VOID )
+//{
+//}
 
 BOOL CDisasm6801::ExportProject( PTSTR ptszFilename )
 {
@@ -1228,7 +1301,7 @@ HANDLE hFile;
 	wsprintf( tsz, _T( "ORG : $%04X\r\n" ), m_dwStartAddress );
 	dwWrite = (DWORD)_tcslen( tsz ) * sizeof( TCHAR );
 	WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL );
-	if ( dwWrite != dwWritten ) {
+	if ( dwWrite == dwWritten ) {
 		if ( m_pLabelHandler ) {
 			bResult = m_pLabelHandler->ExportToStream( hFile );
 		}
@@ -1294,6 +1367,30 @@ HGLOBAL hGlobal = nullptr;
 	return bResult;
 }
 
+BOOL CDisasm6801::ExportCrossReferenceTable( PTSTR ptszFilename )
+{
+BOOL bResult = FALSE, btmpView;
+HANDLE hFile;
+
+	if ( !m_pLabelHandler )
+		return bResult;
+	hFile = CreateFile( ptszFilename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
+	if ( hFile == INVALID_HANDLE_VALUE ) {
+		DispError();
+		return bResult;
+	}
+	SetWriteFileHandle( hFile );
+	btmpView = GetOptionViewWindow();
+	SetOptionViewWindow( FALSE );
+	m_pLabelHandler->PrintCrossReferenceTable();
+	SetOptionViewWindow( btmpView );
+	CloseWriteFileHandle( hFile );
+	SetWriteFileHandle( nullptr );
+	if ( !GetFileWriteError( TRUE ) )
+		bResult = FALSE;
+	return bResult;
+}
+
 VOID CDisasm6801::Init( VOID )
 {
 	ZeroMemory( m_tszBinPath, sizeof( m_tszBinPath ) );
@@ -1301,6 +1398,8 @@ VOID CDisasm6801::Init( VOID )
 	m_pAttrHandler = new CAddressAttrHandler;
 	m_hBin = nullptr;
 	m_pbyBin = nullptr;
+//
+	m_bPassed = _PASSED_NONE;
 //
 	m_bViewCrossReference = TRUE;
 	m_bNoPass2 = FALSE;
@@ -1318,6 +1417,6 @@ CDisasm6801::CDisasm6801()
 
 CDisasm6801::~CDisasm6801()
 {
-	CloseFiles();
+	//CloseFiles();
 }
 
