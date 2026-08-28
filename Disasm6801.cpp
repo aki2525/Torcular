@@ -264,241 +264,241 @@ PCTSTR CDisasm6801::GetMnemonicStr( MnemonicID Id )
 {
 	switch ( Id ) {
 	case MNEM_NOP:
-		return "NOP";
+		return _T( "NOP" );
 	case MNEM_LSRD:
-		return "LSRD";
+		return _T( "LSRD" );
 	case MNEM_ASLD:
-		return "ASLD";
+		return _T( "ASLD" );
 	case MNEM_TAP:
-		return "TAP";
+		return _T( "TAP" );
 	case MNEM_TPA:
-		return "TPA";
+		return _T( "TPA" );
 	case MNEM_INX:
-		return "INX";
+		return _T( "INX" );
 	case MNEM_DEX:
-		return "DEX";
+		return _T( "DEX" );
 	case MNEM_CLV:
-		return "CLV";
+		return _T( "CLV" );
 	case MNEM_SEV:
-		return "SEV";
+		return _T( "SEV" );
 	case MNEM_CLC:
-		return "CLC";
+		return _T( "CLC" );
 	case MNEM_SEC:
-		return "SEC";
+		return _T( "SEC" );
 	case MNEM_CLI:
-		return "CLI";
+		return _T( "CLI" );
 	case MNEM_SEI:
-		return "SEI";
+		return _T( "SEI" );
 	case MNEM_SBA:
-		return "SBA";
+		return _T( "SBA" );
 	case MNEM_CBA:
-		return "CBA";
+		return _T( "CBA" );
 	case MNEM_TAB:
-		return "TAB";
+		return _T( "TAB" );
 	case MNEM_TBA:
-		return "TBA";
+		return _T( "TBA" );
 	case MNEM_DAA:
-		return "DAA";
+		return _T( "DAA" );
 	case MNEM_ABA:
-		return "ABA";
+		return _T( "ABA" );
 	case MNEM_BRA:
-		return "BRA";
+		return _T( "BRA" );
 	case MNEM_BRN:
-		return "BRN";
+		return _T( "BRN" );
 	case MNEM_BHI:
-		return "BHI";
+		return _T( "BHI" );
 	case MNEM_BLS:
-		return "BLS";
+		return _T( "BLS" );
 	case MNEM_BCC:
-		return "BCC";
+		return _T( "BCC" );
 	case MNEM_BCS:
-		return "BCS";
+		return _T( "BCS" );
 	case MNEM_BNE:
-		return "BNE";
+		return _T( "BNE" );
 	case MNEM_BEQ:
-		return "BEQ";
+		return _T( "BEQ" );
 	case MNEM_BVC:
-		return "BVC";
+		return _T( "BVC" );
 	case MNEM_BVS:
-		return "BVS";
+		return _T( "BVS" );
 	case MNEM_BPL:
-		return "BPL";
+		return _T( "BPL" );
 	case MNEM_BMI:
-		return "BMI";
+		return _T( "BMI" );
 	case MNEM_BGE:
-		return "BGE";
+		return _T( "BGE" );
 	case MNEM_BLT:
-		return "BLT";
+		return _T( "BLT" );
 	case MNEM_BGT:
-		return "BGT";
+		return _T( "BGT" );
 	case MNEM_BLE:
-		return "BLE";
+		return _T( "BLE" );
 	case MNEM_TSX:
-		return "TSX";
+		return _T( "TSX" );
 	case MNEM_INS:
-		return "INS";
+		return _T( "INS" );
 	case MNEM_PULA:
-		return "PULA";
+		return _T( "PULA" );
 	case MNEM_PULB:
-		return "PULB";
+		return _T( "PULB" );
 	case MNEM_DES:
-		return "DES";
+		return _T( "DES" );
 	case MNEM_TXS:
-		return "TXS";
+		return _T( "TXS" );
 	case MNEM_PSHA:
-		return "PSHA";
+		return _T( "PSHA" );
 	case MNEM_PSHB:
-		return "PSHB";
+		return _T( "PSHB" );
 	case MNEM_PULX:
-		return "PULX";
+		return _T( "PULX" );
 	case MNEM_RTS:
-		return "RTS";
+		return _T( "RTS" );
 	case MNEM_ABX:
-		return "ABX";
+		return _T( "ABX" );
 	case MNEM_RTI:
-		return "RTI";
+		return _T( "RTI" );
 	case MNEM_PSHX:
-		return "PSHX";
+		return _T( "PSHX" );
 	case MNEM_MUL:
-		return "MUL";
+		return _T( "MUL" );
 	case MNEM_WAI:
-		return "WAI";
+		return _T( "WAI" );
 	case MNEM_SWI:
-		return "SWI";
+		return _T( "SWI" );
 	case MNEM_NEGA:
-		return "NEGA";
+		return _T( "NEGA" );
 	case MNEM_COMA:
-		return "COMA";
+		return _T( "COMA" );
 	case MNEM_LSRA:
-		return "LSRA";
+		return _T( "LSRA" );
 	case MNEM_RORA:
-		return "RORA";
+		return _T( "RORA" );
 	case MNEM_ASRA:
-		return "ASRA";
+		return _T( "ASRA" );
 	case MNEM_ASLA:
-		return "ASLA";
+		return _T( "ASLA" );
 	case MNEM_ROLA:
-		return "ROLA";
+		return _T( "ROLA" );
 	case MNEM_DECA:
-		return "DECA";
+		return _T( "DECA" );
 	case MNEM_INCA:
-		return "INCA";
+		return _T( "INCA" );
 	case MNEM_TSTA:
-		return "TSTA";
+		return _T( "TSTA" );
 	case MNEM_CLRA:
-		return "CLRA";
+		return _T( "CLRA" );
 	case MNEM_NEGB:
-		return "NEGB";
+		return _T( "NEGB" );
 	case MNEM_COMB:
-		return "COMB";
+		return _T( "COMB" );
 	case MNEM_LSRB:
-		return "LSRB";
+		return _T( "LSRB" );
 	case MNEM_RORB:
-		return "RORB";
+		return _T( "RORB" );
 	case MNEM_ASRB:
-		return "ASRB";
+		return _T( "ASRB" );
 	case MNEM_ASLB:
-		return "ASLB";
+		return _T( "ASLB" );
 	case MNEM_ROLB:
-		return "ROLB";
+		return _T( "ROLB" );
 	case MNEM_DECB:
-		return "DECB";
+		return _T( "DECB" );
 	case MNEM_INCB:
-		return "INCB";
+		return _T( "INCB" );
 	case MNEM_TSTB:
-		return "TSTB";
+		return _T( "TSTB" );
 	case MNEM_CLRB:
-		return "CLRB";
+		return _T( "CLRB" );
 	case MNEM_NEG:
-		return "NEG";
+		return _T( "NEG" );
 	case MNEM_COM:
-		return "COM";
+		return _T( "COM" );
 	case MNEM_LSR:
-		return "LSR";
+		return _T( "LSR" );
 	case MNEM_ROR:
-		return "ROR";
+		return _T( "ROR" );
 	case MNEM_ASR:
-		return "ASR";
+		return _T( "ASR" );
 	case MNEM_ASL:
-		return "ASL";
+		return _T( "ASL" );
 	case MNEM_ROL:
-		return "ROL";
+		return _T( "ROL" );
 	case MNEM_DEC:
-		return "DEC";
+		return _T( "DEC" );
 	case MNEM_INC:
-		return "INC";
+		return _T( "INC" );
 	case MNEM_TST:
-		return "TST";
+		return _T( "TST" );
 	case MNEM_JMP:
-		return "JMP";
+		return _T( "JMP" );
 	case MNEM_CLR:
-		return "CLR";
+		return _T( "CLR" );
 	case MNEM_SUBA:
-		return "SUBA";
+		return _T( "SUBA" );
 	case MNEM_CMPA:
-		return "CMPA";
+		return _T( "CMPA" );
 	case MNEM_SBCA:
-		return "SBCA";
+		return _T( "SBCA" );
 	case MNEM_SUBD:
-		return "SUBD";
+		return _T( "SUBD" );
 	case MNEM_ANDA:
-		return "ANDA";
+		return _T( "ANDA" );
 	case MNEM_BITA:
-		return "BITA";
+		return _T( "BITA" );
 	case MNEM_LDAA:
-		return "LDAA";
+		return _T( "LDAA" );
 	case MNEM_EORA:
-		return "EORA";
+		return _T( "EORA" );
 	case MNEM_ADCA:
-		return "ADCA";
+		return _T( "ADCA" );
 	case MNEM_ORAA:
-		return "ORAA";
+		return _T( "ORAA" );
 	case MNEM_ADDA:
-		return "ADDA";
+		return _T( "ADDA" );
 	case MNEM_CPX:
-		return "CPX";
+		return _T( "CPX" );
 	case MNEM_BSR:
-		return "BSR";
+		return _T( "BSR" );
 	case MNEM_LDS:
-		return "LDS";
+		return _T( "LDS" );
 	case MNEM_STAA:
-		return "STAA";
+		return _T( "STAA" );
 	case MNEM_JSR:
-		return "JSR";
+		return _T( "JSR" );
 	case MNEM_STS:
-		return "STS";
+		return _T( "STS" );
 	case MNEM_SUBB:
-		return "SUBB";
+		return _T( "SUBB" );
 	case MNEM_CMPB:
-		return "CMPB";
+		return _T( "CMPB" );
 	case MNEM_SBCB:
-		return "SBCB";
+		return _T( "SBCB" );
 	case MNEM_ADDD:
-		return "ADDD";
+		return _T( "ADDD" );
 	case MNEM_ANDB:
-		return "ANDB";
+		return _T( "ANDB" );
 	case MNEM_BITB:
-		return "BITB";
+		return _T( "BITB" );
 	case MNEM_LDAB:
-		return "LDAB";
+		return _T( "LDAB" );
 	case MNEM_EORB:
-		return "EORB";
+		return _T( "EORB" );
 	case MNEM_ADCB:
-		return "ADCB";
+		return _T( "ADCB" );
 	case MNEM_ORAB:
-		return "ORAB";
+		return _T( "ORAB" );
 	case MNEM_ADDB:
-		return "ADDB";
+		return _T( "ADDB" );
 	case MNEM_LDD:
-		return "LDD";
+		return _T( "LDD" );
 	case MNEM_LDX:
-		return "LDX";
+		return _T( "LDX" );
 	case MNEM_STAB:
-		return "STAB";
+		return _T( "STAB" );
 	case MNEM_STD:
-		return "STD";
+		return _T( "STD" );
 	case MNEM_STX:
-		return "STX";
+		return _T( "STX" );
 	case MNEM_INVALID:
 	default:
 		return nullptr;
