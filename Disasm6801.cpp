@@ -855,6 +855,7 @@ BOOL CDisasm6801::DoPass2( VOID )
 BOOL bResult = FALSE, bEqu, bHasComment, bHasEquComment;
 BYTE byOpcode, byType, bTemp;
 CHAR scOfs;
+LONG lTmp, lMachineCodeTop, lLabelTop, lMnemonicTop, lOperandTop, lCommentTop;
 PBYTE pbyData;
 DWORD i, dwAddr, dwCurAddress, dwLength, dwTmp, dwPos, dwLen;
 TCHAR tsz[ MAX_PATH * 3 ], tszTmp[ MAX_PATH ], tszAddress[ MAX_PATH ], tszMachineCode[ MAX_PATH ], tszOperand[ MAX_PATH ];
@@ -865,13 +866,28 @@ POpcodeInfo pInfo;
 PTSTR ptszLabel;
 #else
 PTSTR ptszCurLabel;
+CLabelHandler::PLabelNameNode pEquNode;
 CLabelHandler::PLabelNameNode pLabelNode;
 #endif
 
 	if ( !m_hBin )
 		return bResult;
 	ZeroMemory( tszOperand, sizeof( tszOperand ) );
-
+	lTmp = 0;
+	if ( m_bViewAddress ) {
+		lTmp += _VIEW_LEN_ADDRESS_;
+	}
+	lMachineCodeTop = lTmp + sizeof( TCHAR );
+	if ( m_bViewMachineCode ) {
+		lTmp += _VIEW_LEN_OPCODE_BYTES_;
+	}
+	lLabelTop = lTmp * sizeof( TCHAR );
+	lMnemonicTop = lLabelTop + ( _VIEW_LEN_LABEL_ + _VIEW_LEN_LABEL_SPACE ) * sizeof( TCHAR );
+	lOperandTop = lMnemonicTop + ( _VIEW_LEN_MNEMONIC ) * sizeof( TCHAR );
+//	if ( m_bViewLabelComment || m_bViewOperandComment ) {
+		lCommentTop = lOperandTop + ( _VIEW_LEN_OPERAND ) * sizeof( TCHAR );
+//	}
+//
 	pbyData = (PBYTE)GlobalLock( m_hBin );
 	if ( pbyData ) {
 // org and equs
@@ -884,8 +900,8 @@ CLabelHandler::PLabelNameNode pLabelNode;
 					continue;
 				FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
 				tsz[ _countof( tsz ) - 1 ] = '\0';
-				CopyMemory( tsz + ( 6 + 3 * 3 + 2 ) * sizeof( TCHAR ), ptszTmp, _tcslen( ptszTmp ) * sizeof( TCHAR ) );
-				if ( _tcslen( ptszTmp ) > 12 ) {
+				CopyMemory( tsz + lLabelTop, ptszTmp, _tcslen( ptszTmp ) * sizeof( TCHAR ) );
+				if ( _tcslen( ptszTmp ) > _VIEW_LEN_LABEL_ ) {
 					CutLastSpace( tsz, _countof( tsz ) );
 					_tcscat( tsz, _T( "\r\n" ) );
 					ConvertToUseTab( tsz, m_uiTab );
@@ -893,9 +909,9 @@ CLabelHandler::PLabelNameNode pLabelNode;
 					FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
 					tsz[ _countof( tsz ) - 1 ] = '\0';
 				}
-				CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 ) * sizeof( TCHAR ), _T( "EQU" ), 3 * sizeof( TCHAR ) );
+				CopyMemory( tsz + lMnemonicTop, _T( "EQU" ), 3 * sizeof( TCHAR ) );
 				wsprintf( tszOperand, _T("$%04X"), i );
-				CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 + 8 ) * sizeof( TCHAR ), tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
+				CopyMemory( tsz + lOperandTop, tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
 				CutLastSpace( tsz, _countof( tsz ) );
 				_tcscat( tsz, _T( "\r\n" ) );
 				ConvertToUseTab( tsz, m_uiTab );
@@ -908,8 +924,8 @@ CLabelHandler::PLabelNameNode pLabelNode;
 						ptszTmp = pLabelNode->tszName;
 						FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
 						tsz[ _countof( tsz ) - 1 ] = '\0';
-						CopyMemory( tsz + ( 6 + 3 * 3 + 2 ) * sizeof( TCHAR ), ptszTmp, _tcslen( ptszTmp ) * sizeof( TCHAR ) );
-						if ( _tcslen( ptszTmp ) > 12 ) {
+						CopyMemory( tsz + lLabelTop, ptszTmp, _tcslen( ptszTmp ) * sizeof( TCHAR ) );
+						if ( _tcslen( ptszTmp ) > _VIEW_LEN_LABEL_ ) {
 							CutLastSpace( tsz, _countof( tsz ) );
 							_tcscat( tsz, _T( "\r\n" ) );
 							ConvertToUseTab( tsz, m_uiTab );
@@ -917,9 +933,9 @@ CLabelHandler::PLabelNameNode pLabelNode;
 							FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
 							tsz[ _countof( tsz ) - 1 ] = '\0';
 						}
-						CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 ) * sizeof( TCHAR ), _T( "EQU" ), 3 * sizeof( TCHAR ) );
+						CopyMemory( tsz + lMnemonicTop, _T( "EQU" ), 3 * sizeof( TCHAR ) );
 						wsprintf( tszOperand, _T( "$%04X" ), i );
-						CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 + 8 ) * sizeof( TCHAR ), tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
+						CopyMemory( tsz + lOperandTop, tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
 						if ( pLabelNode->tszComment[ 0 ] != _T( '\0' ) ) {
 							CutLastSpace( tsz, _countof( tsz ) );
 							wsprintf( tszTmp, _T( " ; %s" ), pLabelNode->tszComment );
@@ -942,9 +958,9 @@ CLabelHandler::PLabelNameNode pLabelNode;
 		}
 		FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
 		tsz[ _countof( tsz ) - 1 ] = '\0';
-		CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 ) * sizeof( TCHAR ), _T( "ORG" ), 3 * sizeof( TCHAR ) );
+		CopyMemory( tsz + lMnemonicTop, _T( "ORG" ), 3 * sizeof( TCHAR ) );
 		wsprintf( tszOperand, _T( "$%04X" ), m_dwStartAddress );
-		CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 + 8 ) * sizeof( TCHAR ), tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
+		CopyMemory( tsz + lOperandTop, tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
 		CutLastSpace( tsz, _countof( tsz ) );
 		_tcscat( tsz, _T( "\r\n\r\n" ) );
 		ConvertToUseTab( tsz, m_uiTab );
@@ -1021,7 +1037,7 @@ CLabelHandler::PLabelNameNode pLabelNode;
 								if ( !pctszEquComment )
 									pctszEquComment = m_pLabelHandler->GetComment( dwTmp );
 #else
-								CLabelHandler::PLabelNameNode pEquNode = m_pLabelHandler->GetLabelAliasList( dwTmp );
+								pEquNode = m_pLabelHandler->GetLabelAliasList( dwTmp );
 								while ( pEquNode ) {
 									if ( pEquNode->bIsEqu ) {
 										if ( pEquNode->tszComment[ 0 ] != _T( '\0' ) ) {
@@ -1049,7 +1065,7 @@ CLabelHandler::PLabelNameNode pLabelNode;
 								if ( !pctszEquComment )
 									pctszEquComment = m_pLabelHandler->GetComment( dwTmp );
 #else
-								CLabelHandler::PLabelNameNode pEquNode = m_pLabelHandler->GetLabelAliasList( dwTmp );
+								pEquNode = m_pLabelHandler->GetLabelAliasList( dwTmp );
 								while ( pEquNode ) {
 									if ( pEquNode->bIsEqu ) {
 										if ( pEquNode->tszComment[ 0 ] != _T( '\0' ) ) {
@@ -1078,7 +1094,7 @@ CLabelHandler::PLabelNameNode pLabelNode;
 								if ( !pctszEquComment )
 									pctszEquComment = m_pLabelHandler->GetComment( dwTmp );
 #else
-								CLabelHandler::PLabelNameNode pEquNode = m_pLabelHandler->GetLabelAliasList( dwTmp );
+								pEquNode = m_pLabelHandler->GetLabelAliasList( dwTmp );
 								while ( pEquNode ) {
 									if ( pEquNode->bIsEqu ) {
 										if ( pEquNode->tszComment[ 0 ] != _T( '\0' ) ) {
@@ -1104,16 +1120,21 @@ CLabelHandler::PLabelNameNode pLabelNode;
 				}
 				FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
 				tsz[ _countof( tsz ) - 1 ] = '\0';
-				CopyMemory( tsz, tszAddress, _tcslen( tszAddress ) * sizeof( TCHAR ) );
-				CopyMemory( tsz + 6 * sizeof( TCHAR ), tszMachineCode, _tcslen( tszMachineCode ) * sizeof( TCHAR ) );
+				if ( m_bViewAddress ) {
+					CopyMemory( tsz, tszAddress, _tcslen( tszAddress ) * sizeof( TCHAR ) );
+				}
+				if ( m_bViewMachineCode ) {
+					CopyMemory( tsz + lMachineCodeTop, tszMachineCode, _tcslen( tszMachineCode ) * sizeof( TCHAR ) );
+				}
 #ifndef _SUPPORT_LABEL_ALIAS
 				if ( ptszLabel ) {
-					CopyMemory( tsz + ( 6 + 3 * 3 + 2 ) * sizeof( TCHAR ), ptszLabel, _tcslen( ptszLabel ) * sizeof( TCHAR ) );
-					tsz[ 6 + 3 * 3 + 2 + _tcslen( ptszLabel ) ] = ':';
+					CopyMemory( tsz + lLabelTop, ptszLabel, _tcslen( ptszLabel ) * sizeof( TCHAR ) );
+					if ( m_bViewLabelColon )
+						tsz[ lLabelTop / sizeof( TCHAR ) + _tcslen( ptszLabel ) ] = _T( ':' );
 				}
 				if ( pctszMnemonic ) {
 					if ( ptszLabel ) {
-						if ( _tcslen( ptszLabel ) > 12 ) {
+						if ( _tcslen( ptszLabel ) > _VIEW_LEN_LABEL_ ) {
 							CutLastSpace( tsz, _countof( tsz ) );
 							_tcscat( tsz, _T( "\r\n" ) );
 							ConvertToUseTab( tsz, m_uiTab );
@@ -1122,19 +1143,20 @@ CLabelHandler::PLabelNameNode pLabelNode;
 							tsz[ _countof( tsz ) - 1 ] = '\0';
 						}
 					}
-					CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 ) * sizeof( TCHAR ), pctszMnemonic, _tcslen( pctszMnemonic ) * sizeof( TCHAR ) );
-					CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 + 8 ) * sizeof( TCHAR ), tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
+					CopyMemory( tsz + lMnemonicTop, pctszMnemonic, _tcslen( pctszMnemonic ) * sizeof( TCHAR ) );
+					CopyMemory( tsz + lOperandTop, tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
 				} else {
-					_tcscpy( tsz + 6 + 3 * 3 + 2 + 12 + 3, _T( "???" ) );
+					_tcscpy( tsz + lMnemonicTop, _T( "???" ) );
 				}
 #else
 				if ( pLabelNode ) {
 					while ( pLabelNode ) {
 						ptszCurLabel = pLabelNode->tszName;
-						CopyMemory( tsz + ( 6 + 3 * 3 + 2 ) * sizeof( TCHAR ), ptszCurLabel, _tcslen( ptszCurLabel ) * sizeof( TCHAR ) );
-						tsz[ 6 + 3 * 3 + 2 + _tcslen( ptszCurLabel ) ] = ':';
+						CopyMemory( tsz + lLabelTop, ptszCurLabel, _tcslen( ptszCurLabel ) * sizeof( TCHAR ) );
+						if ( m_bViewLabelColon )
+							tsz[ lLabelTop / sizeof( TCHAR ) + _tcslen( ptszCurLabel ) ] = _T( ':' );
 						pLabelNode = pLabelNode->pNext;
-						if ( pLabelNode || ( _tcslen( ptszCurLabel ) > 12 ) ) {
+						if ( pLabelNode || ( _tcslen( ptszCurLabel ) > _VIEW_LEN_LABEL_ ) ) {
 							CutLastSpace( tsz, _countof( tsz ) );
 							_tcscat( tsz, _T( "\r\n" ) );
 							ConvertToUseTab( tsz, m_uiTab );
@@ -1145,19 +1167,23 @@ CLabelHandler::PLabelNameNode pLabelNode;
 					}
 				}
 				if ( pctszMnemonic ) {
-					CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 ) * sizeof( TCHAR ), pctszMnemonic, _tcslen( pctszMnemonic ) * sizeof( TCHAR ) );
-					CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 + 8 ) * sizeof( TCHAR ), tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
+					CopyMemory( tsz + lMnemonicTop, pctszMnemonic, _tcslen( pctszMnemonic ) * sizeof( TCHAR ) );
+					CopyMemory( tsz + lOperandTop, tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
 				} else {
-					_tcscpy( tsz + 6 + 3 * 3 + 2 + 12 + 3, _T( "???" ) );
+					_tcscpy( tsz + lMnemonicTop, _T( "???" ) );
 				}
 #endif
-				if ( pctszComment ) {
-					if ( _tcslen( pctszComment ) )
-						bHasComment = TRUE;
+				if ( m_bViewLabelComment ) {
+					if ( pctszComment ) {
+						if ( _tcslen( pctszComment ) )
+							bHasComment = TRUE;
+					}
 				}
-				if ( pctszEquComment ) {
-					if ( _tcslen( pctszEquComment ) )
-						bHasEquComment = TRUE;
+				if ( m_bViewEquComment ) {
+					if ( pctszEquComment ) {
+						if ( _tcslen( pctszEquComment ) )
+							bHasEquComment = TRUE;
+					}
 				}
 				if ( bHasComment || bHasEquComment ) {
 					if ( _tcslen( tszOperand ) > 14 ) {
@@ -1176,20 +1202,21 @@ CLabelHandler::PLabelNameNode pLabelNode;
 //FE88  7D 00	AA	 LFE88:			TST		RAM_AA
 //1234567890123456789012345678901234567890123456789012345
 //														   ; Comment
-						tsz[ 58 ] = _T( ';' );
-						dwPos = 60;
+						tsz[ lCommentTop / sizeof( TCHAR ) ] = _T( ';' );
+						dwPos = lCommentTop;
+						dwPos += _VIEW_LEN_OPRAND_SPACE * sizeof( TCHAR );
 						if ( bHasComment ) {
-							dwLen = (DWORD)_tcslen( pctszComment );
-							CopyMemory( tsz + dwPos * sizeof( TCHAR ), pctszComment, dwLen * sizeof( TCHAR ) );
+							dwLen = (DWORD)_tcslen( pctszComment ) * sizeof( TCHAR );
+							CopyMemory( tsz + dwPos, pctszComment, dwLen );
 							dwPos += dwLen;
 							if ( bHasEquComment ) {
-								CopyMemory( tsz + dwPos * sizeof( TCHAR ), _T( " / " ), 3 * sizeof( TCHAR ) );
-								dwPos += 3;
+								CopyMemory( tsz + dwPos, _T( " / " ), 3 * sizeof( TCHAR ) );
+								dwPos += 3 * sizeof( TCHAR );
 							}
 						}
 						if ( bHasEquComment ) {
-							dwLen = (DWORD)_tcslen( pctszEquComment );
-							CopyMemory( tsz + dwPos * sizeof( TCHAR ), pctszEquComment, dwLen * sizeof( TCHAR ) );
+							dwLen = (DWORD)_tcslen( pctszEquComment ) * sizeof( TCHAR );
+							CopyMemory( tsz + dwPos, pctszEquComment, dwLen );
 							dwPos += dwLen;
 						}
 					}
@@ -1210,6 +1237,7 @@ CLabelHandler::PLabelNameNode pLabelNode;
 DWORD CDisasm6801::OutputDataDirective( PBYTE pbyData, DWORD dwAddr, DWORD dwCurAddress )
 {
 BYTE byChar;
+LONG lTmp, lMachineCodeTop, lLabelTop, lMnemonicTop, lOperandTop, lCommentTop;
 DWORD i, dwLength = 1, dwTmp = 0;
 TCHAR tsz[ MAX_PATH * 3 ] = { 0 };
 TCHAR tszTmp[ MAX_PATH ] = { 0 };
@@ -1230,10 +1258,28 @@ PTSTR ptszCurLabel = nullptr;
 CLabelHandler::PLabelNameNode pLabelNode = nullptr;
 #endif
 
+	lTmp = 0;
+	if ( m_bViewAddress ) {
+		lTmp += _VIEW_LEN_ADDRESS_;
+	}
+	lMachineCodeTop = lTmp + sizeof( TCHAR );
+	if ( m_bViewMachineCode ) {
+		lTmp += _VIEW_LEN_OPCODE_BYTES_;
+	}
+	lLabelTop = lTmp * sizeof( TCHAR );
+	lMnemonicTop = lLabelTop + ( _VIEW_LEN_LABEL_ + _VIEW_LEN_LABEL_SPACE ) * sizeof( TCHAR );
+	lOperandTop = lMnemonicTop + ( _VIEW_LEN_MNEMONIC ) * sizeof( TCHAR );
+//	if ( m_bViewLabelComment || m_bViewOperandComment ) {
+		lCommentTop = lOperandTop + ( _VIEW_LEN_OPERAND ) * sizeof( TCHAR );
+//	}
+
 	if ( m_pAttrHandler->IsDW( (WORD)dwCurAddress ) ) {
 	// ATTR_DW (Word Data / Pointer) -> DW
 		dwLength = 2;
-		_tcscpy( tszMnemonic, _T( "DW" )/*_T("FDB")*/ );
+		if ( m_bViewAsDW )
+			_tcscpy( tszMnemonic, _T( "DW" ) );
+		else
+			_tcscpy( tszMnemonic, _T( "FDB" ) );
 
 		if ( ( dwAddr + 1 ) < m_dwSizeBin ) {
 			dwTmp = ( ( (DWORD)pbyData[ dwAddr ] << 8 ) | (DWORD)pbyData[ dwAddr + 1 ] ) & 0xFFFF;
@@ -1248,7 +1294,10 @@ CLabelHandler::PLabelNameNode pLabelNode = nullptr;
 		}
 	} else if ( m_pAttrHandler->IsDC( dwCurAddress ) ) {
 	// ATTR_DC(String Data) -> DC
-		_tcscpy( tszMnemonic, _T( "DC" )/*_T("FCC")*/ );
+		if ( m_bViewAsDC )
+			_tcscpy( tszMnemonic, _T( "DC" ) );
+		else
+			_tcscpy( tszMnemonic, _T( "FCC" ) );
 
 		dwStrLen = 0;
 		while ( ( ( dwAddr + dwStrLen ) < m_dwSizeBin ) && ( dwStrLen < 32 ) ) {
@@ -1277,7 +1326,10 @@ CLabelHandler::PLabelNameNode pLabelNode = nullptr;
 	} else {
 		// ATTR_DB / ATTR_DATA(Byte Data) -> DB
 		dwLength = 1;
-		_tcscpy( tszMnemonic, _T( "DB" )/*_T("FCB")*/ );
+		if ( m_bViewAsDB )
+			_tcscpy( tszMnemonic, _T( "DB" ) );
+		else
+			_tcscpy( tszMnemonic, _T( "FCB" ) );
 		wsprintf( tszOperand, _T( "$%02X" ), pbyData[ dwAddr ] );
 	}
 
@@ -1310,23 +1362,25 @@ CLabelHandler::PLabelNameNode pLabelNode = nullptr;
 		FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
 		tsz[ _countof( tsz ) - 1 ] = '\0';
 		CopyMemory( tsz, tszAddress, _tcslen( tszAddress ) * sizeof( TCHAR ) );
-		CopyMemory( tsz + 6 * sizeof( TCHAR ), tszMachineCode, _tcslen( tszMachineCode ) * sizeof( TCHAR ) );
+		CopyMemory( tsz + lMachineCodeTop, tszMachineCode, _tcslen( tszMachineCode ) * sizeof( TCHAR ) );
 
 #ifndef _SUPPORT_LABEL_ALIAS
 		if ( ptszLabel ) {
-			CopyMemory( tsz + ( 6 + 3 * 3 + 2 ) * sizeof( TCHAR ), ptszLabel, _tcslen( ptszLabel ) * sizeof( TCHAR ) );
-			tsz[ 6 + 3 * 3 + 2 + _tcslen( ptszLabel ) ] = ':';
+			CopyMemory( tsz + lLabelTop, ptszLabel, _tcslen( ptszLabel ) * sizeof( TCHAR ) );
+			if ( m_bViewLabelColon )
+				tsz[ lLabelTop / sizeof( tCHAR ) + _tcslen( ptszLabel ) ] = _T( ':' );
 		}
-		CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 ) * sizeof( TCHAR ), tszMnemonic, _tcslen( tszMnemonic ) * sizeof( TCHAR ) );
-		CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 + 8 ) * sizeof( TCHAR ), tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
+		CopyMemory( tsz + lMnemonicTop, tszMnemonic, _tcslen( tszMnemonic ) * sizeof( TCHAR ) );
+		CopyMemory( tsz + lOperandTop, tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
 #else
 		if ( pLabelNode ) {
 			while ( pLabelNode ) {
 				ptszCurLabel = pLabelNode->tszName;
-				CopyMemory( tsz + ( 6 + 3 * 3 + 2 ) * sizeof( TCHAR ), ptszCurLabel, _tcslen( ptszCurLabel ) * sizeof( TCHAR ) );
-				tsz[ 6 + 3 * 3 + 2 + _tcslen( ptszCurLabel ) ] = ':';
+				CopyMemory( tsz + lLabelTop, ptszCurLabel, _tcslen( ptszCurLabel ) * sizeof( TCHAR ) );
+				if ( m_bViewLabelColon )
+					tsz[ lLabelTop / sizeof( TCHAR ) + _tcslen( ptszCurLabel ) ] = _T( ':' );
 				pLabelNode = pLabelNode->pNext;
-				if ( ( pLabelNode != nullptr ) || ( _tcslen( ptszCurLabel ) > 12 ) ) {
+				if ( ( pLabelNode != nullptr ) || ( _tcslen( ptszCurLabel ) > _VIEW_LEN_LABEL_ ) ) {
 					CutLastSpace( tsz, _countof( tsz ) );
 					_tcscat( tsz, _T( "\r\n" ) );
 					ConvertToUseTab( tsz, m_uiTab );
@@ -1336,23 +1390,25 @@ CLabelHandler::PLabelNameNode pLabelNode = nullptr;
 				}
 			}
 		}
-		CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 ) * sizeof( TCHAR ), tszMnemonic, _tcslen( tszMnemonic ) * sizeof( TCHAR ) );
-		CopyMemory( tsz + ( 6 + 3 * 3 + 2 + 12 + 3 + 8 ) * sizeof( TCHAR ), tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
+		CopyMemory( tsz + lMnemonicTop, tszMnemonic, _tcslen( tszMnemonic ) * sizeof( TCHAR ) );
+		CopyMemory( tsz + lOperandTop, tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
 #endif
-		if ( pctszComment ) {
-			if  ( _tcslen( pctszComment ) ) {
-				if ( _tcslen( tszOperand ) > 14 ) {
-					CutLastSpace( tsz, _countof( tsz ) );
-					if ( pctszComment ) {
-						_tcscat( tsz, _T( " ; " ) );
-						_tcscat( tsz, pctszComment );
-					}
-				} else {
+		if ( m_bViewLabelComment ) {
+			if ( pctszComment ) {
+				if  ( _tcslen( pctszComment ) ) {
+					if ( _tcslen( tszOperand ) > 14 ) {
+						CutLastSpace( tsz, _countof( tsz ) );
+						if ( pctszComment ) {
+							_tcscat( tsz, _T( " ; " ) );
+							_tcscat( tsz, pctszComment );
+						}
+					} else {
 //FE88  7D 00	AA	 LFE88:			TST		RAM_AA
 //1234567890123456789012345678901234567890123456789012345
 //														   ; Comment
-					tsz[ 58 ] = _T( ';' );
-					CopyMemory( tsz + 60 * sizeof( TCHAR ), pctszComment, _tcslen( pctszComment ) * sizeof( TCHAR ) );
+						tsz[ lCommentTop / sizeof( TCHAR ) ] = _T( ';' );
+						CopyMemory( tsz + lCommentTop + ( 2 * sizeof( TCHAR ) ), pctszComment, _tcslen( pctszComment ) * sizeof( TCHAR ) );
+					}
 				}
 			}
 		}
@@ -1495,6 +1551,12 @@ VOID CDisasm6801::Init( VOID )
 	m_bViewMachineCode = TRUE;
 	m_bViewAddress = TRUE;
 	m_uiTab = 4;
+	m_bViewLabelColon = TRUE;
+	m_bViewLabelComment = TRUE;
+	m_bViewEquComment = TRUE;
+	m_bViewAsDB = FALSE;
+	m_bViewAsDW = FALSE;
+	m_bViewAsDC = FALSE;
 	m_dwStartAddress = 0xf000;
 }
 

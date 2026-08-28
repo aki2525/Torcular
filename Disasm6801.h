@@ -4,6 +4,17 @@
 #include "LabelHandler.h"
 #include "AddressAttrHandler.h"
 
+//FE88  7D 00 AA   LFE88:		  TST	  RAM_AA
+//012345678901234567890123456789012345678901234567890123456789012
+//														    ; Label Comment / Oprand Comment
+#define _VIEW_LEN_ADDRESS_ ( 4 + 2 )
+#define _VIEW_LEN_OPCODE_BYTES_ ( 3 * 3 + 2 )
+#define _VIEW_LEN_LABEL_ ( 12 )
+#define _VIEW_LEN_LABEL_SPACE ( 3 )
+#define _VIEW_LEN_MNEMONIC ( 6 + 2 )
+#define _VIEW_LEN_OPERAND ( 15 + 2 )
+#define _VIEW_LEN_OPRAND_SPACE ( 2 )
+
 enum {
 	_PASSED_NONE,
 	_PASSED_1 = 0x8000, // processed pass 1
@@ -207,6 +218,12 @@ private:
 	BOOL m_bViewMachineCode;
 	UINT m_uiTab;
 	BOOL m_bViewAddress;
+	BOOL m_bViewLabelColon;
+	BOOL m_bViewLabelComment;
+	BOOL m_bViewEquComment;
+	BOOL m_bViewAsDB;
+	BOOL m_bViewAsDW;
+	BOOL m_bViewAsDC;
 //
 	DWORD m_dwStartAddress;
 };
