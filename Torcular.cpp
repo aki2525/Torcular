@@ -3,6 +3,7 @@
 
 #include "framework.h"
 #include <shobjidl.h>
+#include <commdlg.h>
 #include "Torcular.h"
 #include "Disasm6801.h"
 
@@ -35,6 +36,7 @@ BOOL GetOption( VOID );
 BOOL MakeCrossReference( HWND hwnd );
 BOOL ImportProjectFile( HWND hwnd );
 BOOL ExportProjectFile( HWND hwnd );
+BOOL ChooseViewFont( HWND hwnd, HWND hView );
 
 COMDLG_FILTERSPEC fpProjTypes[] = {
 	{ L"Project file(*.prj68)", L"*.prj68" },
@@ -151,11 +153,23 @@ HWND hWnd;
 LRESULT CALLBACK WndProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 {
 	switch( uMsg ) {
-	case WM_CREATE:
+	case WM_CREATE: {
+	CHARFORMAT2 cf;
+
 		g_hwndView = CreateWindowExW( 0, MSFTEDIT_CLASS/*RICHEDIT_CLASS*/, L"", ES_MULTILINE | ES_NOHIDESEL | ES_AUTOVSCROLL | ES_AUTOHSCROLL | WS_CHILD | WS_BORDER | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL, CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, hWnd, ( HMENU )IDC_VIEW, g_hInstance, nullptr);
 		g_pThis = new CDisasm6801;
+		ZeroMemory( &cf, sizeof( cf ) );
+		cf.cbSize = sizeof( cf );
+		cf.dwMask = CFM_FACE | CFM_CHARSET | CFM_FACE;
+		cf.bCharSet = SHIFTJIS_CHARSET;
+		cf.bPitchAndFamily = FIXED_PITCH | FF_MODERN;
+    
+		//_tcscpy( cf.szFaceName, _T( "BIZ UDゴシック" ) );
+		_tcscpy( cf.szFaceName, _T( "Consolas" ) );
+		SendMessage( g_hwndView, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cf);
 		if ( g_pThis )
 			PostMessage( hWnd, WM_COMMAND, IDM_HERE_WE_GO, 0 );
+	}
 		break;
 	case WM_SIZE:
 		g_lClientX = LOWORD( lParam );
@@ -187,6 +201,9 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 			break;
 		case IDM_EXPORT_PROJECT:
 			ExportProjectFile( hWnd );
+			break;
+		case IDM_SELECTFONT:
+			ChooseViewFont( hWnd, g_hwndView );
 			break;
 		default:
 			return DefWindowProc( hWnd, uMsg, wParam, lParam );
@@ -607,6 +624,82 @@ IFileSaveDialog* pFileSave = nullptr;
 		bResult = g_pThis->ExportProject( tszPath );
 	}
 
+	return bResult;
+}
+
+BOOL ChooseViewFont( HWND hwnd, HWND hwndView )
+{
+HDC hdc;
+INT iLogPixY, iSizePoint;
+BOOL bResult = FALSE;
+LOGFONT lf;
+CHOOSEFONT cf;
+CHARFORMAT2 cf2;
+
+	if ( !hwnd )
+		return bResult;
+	if ( !hwndView )
+		return bResult;
+
+	ZeroMemory( &cf2, sizeof( cf2 ) );
+	ZeroMemory( &lf, sizeof( lf ) );
+	cf2.cbSize = sizeof( cf2 );
+	SendMessage( hwndView, EM_GETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf2 );
+
+	_tcsncpy( lf.lfFaceName, cf2.szFaceName, LF_FACESIZE );
+	lf.lfCharSet = cf2.bCharSet;
+	if ( cf2.dwMask & CFM_BOLD ) {
+		if ( cf2.dwEffects & CFE_BOLD )
+			lf.lfWeight = FW_BOLD;
+		else
+			lf.lfWeight = FW_NORMAL;
+	}
+	if ( cf2.dwMask & CFM_ITALIC ) {
+		if ( cf2.dwEffects & CFE_ITALIC )
+			lf.lfItalic = TRUE;
+		else
+			lf.lfItalic = FALSE;
+	}
+	hdc = GetDC( hwnd );
+	if ( cf2.yHeight > 0 ) {
+		iLogPixY = GetDeviceCaps( hdc, LOGPIXELSY );
+		iSizePoint = cf2.yHeight / 20; // 1 point as 20 twips
+	} else {
+		iLogPixY = GetDpiForWindow( hwnd );
+		iSizePoint = 10;
+	}
+	lf.lfHeight = -MulDiv( iSizePoint, iLogPixY, 72 );
+
+	ZeroMemory( &cf, sizeof( cf ) );
+	cf.lStructSize = sizeof( cf );
+	cf.hwndOwner = hwnd;
+	cf.hDC = hdc;
+	cf.lpLogFont = &lf;
+	cf.Flags = CF_SCREENFONTS | CF_FIXEDPITCHONLY | CF_INITTOLOGFONTSTRUCT | CF_SCRIPTSONLY | CF_NOSCRIPTSEL;
+//
+	bResult = ChooseFont( &cf );
+	ReleaseDC( hwnd, hdc );
+	if ( bResult ) {
+		ZeroMemory( &cf2, sizeof( cf2 ) );
+		cf2.cbSize = sizeof( cf2 );
+		cf2.dwMask = CFM_FACE | CFM_SIZE | CFM_BOLD | CFM_ITALIC | CFM_CHARSET;
+
+		_tcsncpy( cf2.szFaceName, lf.lfFaceName, LF_FACESIZE );
+		cf2.bCharSet = lf.lfCharSet;
+
+		if ( lf.lfWeight >= FW_BOLD )
+			cf2.dwEffects |= CFE_BOLD;
+		if ( lf.lfItalic )
+			cf2.dwEffects |= CFE_ITALIC;
+
+		hdc = GetDC( hwndView );
+		iLogPixY = GetDeviceCaps( hdc, LOGPIXELSY );
+		ReleaseDC( hwndView, hdc );
+
+		iSizePoint = MulDiv( abs( lf.lfHeight ), 72, iLogPixY );
+		cf2.yHeight = iSizePoint * 20;
+		SendMessage( hwndView, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cf2 );
+	}
 	return bResult;
 }
 

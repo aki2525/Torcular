@@ -17,6 +17,7 @@
 #define IDM_MAKE_REFFILE                32771
 #define IDM_IMPORT_PROJECT              32772
 #define IDM_EXPORT_PROJECT              32773
+#define IDM_SELECTFONT 32774
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
