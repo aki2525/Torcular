@@ -1535,6 +1535,11 @@ HANDLE hFile;
 	return bResult;
 }
 
+UINT CDisasm6801::GetTab( VOID )
+{
+	return m_uiTab;
+}
+
 VOID CDisasm6801::Init( VOID )
 {
 	ZeroMemory( m_tszBinPath, sizeof( m_tszBinPath ) );

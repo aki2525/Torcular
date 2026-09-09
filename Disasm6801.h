@@ -185,6 +185,7 @@ public:
 	BOOL DoPass1( VOID );
 	BOOL CreateAsmFile( VOID );
 	BOOL DoPass2( VOID );
+	UINT GetTab( VOID );
 //
 	//VOID WriteToFile( PTSTR ptszStr );
 	//VOID CloseFiles( VOID );
