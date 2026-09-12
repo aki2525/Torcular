@@ -32,9 +32,10 @@
 #define IDM_HERE_WE_GO                  5000
 #define IDM_MAKE_DISASMFILE 32771
 #define IDM_MAKE_REFFILE                32772
-#define IDM_IMPORT_PROJECT              32773
-#define IDM_EXPORT_PROJECT              32774
-#define IDM_SELECTFONT 32775
+#define IDM_MAKE_DUMPFILE 32773
+#define IDM_IMPORT_PROJECT              32774
+#define IDM_EXPORT_PROJECT              32775
+#define IDM_SELECTFONT 32776
 #define IDC_STATIC                      -1
 
 // Next default values for new objects

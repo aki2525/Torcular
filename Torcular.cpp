@@ -35,6 +35,7 @@ INT_PTR CALLBACK About( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
 BOOL GetOption( VOID );
 BOOL MakeDisassemble( HWND hwnd );
 BOOL MakeCrossReference( HWND hwnd );
+BOOL MakeDump( HWND hwnd );
 BOOL ImportProjectFile( HWND hwnd );
 BOOL ExportProjectFile( HWND hwnd );
 BOOL ChooseViewFont( HWND hwnd, HWND hView );
@@ -45,6 +46,12 @@ COMDLG_FILTERSPEC fpProjTypes[] = {
 };
 COMDLG_FILTERSPEC fpDisasmTypes[] = {
 	{ L"Disasm file(*.disasm68)", L"*.disasm68" },
+	{ L"All file(*.*)", L"*.*" }
+};
+COMDLG_FILTERSPEC fpDumpTypes[] = {
+	{ L"dump file(*.dump68)", L"*.dump68" },
+	{ L"dump file(*.dump)", L"*.dump" },
+	{ L"dump file(*.dmp)", L"*.dmp" },
 	{ L"All file(*.*)", L"*.*" }
 };
 COMDLG_FILTERSPEC fpXrefTypes[] = {
@@ -203,6 +210,9 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 			break;
 		case IDM_MAKE_REFFILE:
 			MakeCrossReference( hWnd );
+			break;
+		case IDM_MAKE_DUMPFILE:
+			MakeDump( hWnd );
 			break;
 		case IDM_IMPORT_PROJECT:
 			ImportProjectFile( hWnd );
@@ -656,6 +666,55 @@ IFileSaveDialog* pFileSave = nullptr;
 	}
 	if ( bResult ) {
 		bResult = g_pThis->ExportCrossReferenceTable( tszPath );
+	}
+
+	return bResult;
+}
+
+BOOL MakeDump( HWND hwnd )
+{
+INT iRet;
+BOOL bResult = FALSE;
+TCHAR tszPath[ MAX_PATH ];
+PWSTR pszFilePath = nullptr;
+HRESULT hr;
+IShellItem* pItem;
+IFileSaveDialog* pFileSave = nullptr;
+
+	if ( !g_pThis )
+		return bResult;
+
+	hr = CoCreateInstance( CLSID_FileSaveDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS( &pFileSave ) );
+	if ( SUCCEEDED( hr ) ) {
+		pFileSave->SetFileTypes( _countof( fpDumpTypes ), fpDumpTypes );
+		pFileSave->SetFileTypeIndex( 1 );
+		pFileSave->SetDefaultExtension( L"dump68" );
+		pFileSave->SetTitle( L"make binary dump File" );
+
+		hr = pFileSave->Show( hwnd );
+		if ( SUCCEEDED( hr ) ) {
+			hr = pFileSave->GetResult( &pItem );
+			if ( SUCCEEDED( hr ) ) {
+				hr = pItem->GetDisplayName( SIGDN_FILESYSPATH, &pszFilePath );
+#ifndef _UNICODE
+				if ( SUCCEEDED( hr ) ) {
+					iRet = WideCharToMultiByte( CP_ACP, 0, pszFilePath, -1, tszPath, sizeof( tszPath ), NULL, NULL );
+					if ( iRet > 0 ) {
+						bResult = TRUE;
+					}
+#else
+					_tcscpy( tszPath, pszFilePath );
+					bResult = TRUE;
+#endif
+					CoTaskMemFree( pszFilePath );
+					pItem->Release();
+				}
+			}
+		}
+		pFileSave->Release();
+	}
+	if ( bResult ) {
+		bResult = g_pThis->DumpBinary( tszPath );
 	}
 
 	return bResult;

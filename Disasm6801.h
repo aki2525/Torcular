@@ -15,6 +15,9 @@
 #define _VIEW_LEN_OPERAND ( 15 + 2 )
 #define _VIEW_LEN_OPRAND_SPACE ( 2 )
 
+#define _VIEW_DUMP_LEN_ADDRESS ( 4 )
+#define _VIEW_DUMP_LEN_BINARYDUMP ( 3 * 16 )
+
 enum {
 	_PASSED_NONE,
 	_PASSED_1 = 0x8000, // processed pass 1
@@ -211,6 +214,7 @@ public:
 	VOID Init( VOID );
 	BOOL Set6801Vector( VOID );
 
+	BOOL DumpBinary( PTSTR ptszFilename );
 	BOOL ImportProject( PTSTR ptszFilename );
 	BOOL ExportProject( PTSTR ptszFilename );
 	BOOL ExportCrossReferenceTable( PTSTR ptszFilename );
@@ -244,6 +248,12 @@ private:
 	BOOL m_bViewAsDB;
 	BOOL m_bViewAsDW;
 	BOOL m_bViewAsDC;
+// dump mode / options
+	BOOL m_bDumpViewAddress;
+	BOOL m_bDumpViewAddressSepareter; // 0 : none, 1 : space, 2 : space 2, 3 : space 3, 4 : with solon, 5 : space with colon
+	BOOL m_bDumpWithASCII;
+	BOOL m_bDumpViewBindumpSepareter; // 0 : none, 1 : space, 2 : space 2, 3 : space 3, 4 : with solon, 5 : space with colon,  6 : semicolon, 7 : space with semicolon
+	BOOL m_bDumpAsciiType; // 0 : normal, 1 : > 0x20 and 0x7f, 2 : bit 0 - 6( for FCC/DC ).
 //
 	DWORD m_dwStartAddress;
 };

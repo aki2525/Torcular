@@ -1429,6 +1429,210 @@ CLabelHandler::PLabelNameNode pLabelNode = nullptr;
 //{
 //}
 
+BOOL CDisasm6801::DumpBinary( PTSTR ptszFilename )
+{
+INT i;
+BOOL bResult = FALSE;
+ULONG ulPos;
+TCHAR tsz[ MAX_PATH ], tsz2[ MAX_PATH ];
+DWORD dwWrite, dwWritten, dwAddr;
+PBYTE pbyData;
+HANDLE hFile;
+
+	hFile = CreateFile( ptszFilename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
+	if ( hFile == INVALID_HANDLE_VALUE ) {
+		DispError();
+		return bResult;
+	} else {
+		pbyData = (PBYTE)GlobalLock( m_hBin );
+		if ( pbyData ) {
+			bResult = TRUE;
+			//m_dwPC = m_dwStartAddress;
+			ulPos = 0;
+			FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
+			if ( m_bDumpViewAddress ) {
+				CopyMemory( tsz, _T( "Addr" ), 4 * sizeof( TCHAR ) );
+				switch( m_bDumpViewAddressSepareter ) {
+				case 0: // none
+					break;
+				case 1: // space
+				case 4: // colon
+					ulPos++;
+					break;
+				case 2: // space2
+					ulPos += 2;
+					break;
+				case 3: // space3
+				case 5: // space and colon
+					ulPos += 3;
+					break;
+				}
+				ulPos += _VIEW_DUMP_LEN_ADDRESS;
+			}
+			for ( i = 0; i < 16; i++ ) {
+				wsprintf( tsz2, _T( "%02X" ), i );
+				CopyMemory( &tsz[ ulPos + i * 3 ], tsz2, _tcslen( tsz2 ) * sizeof( TCHAR ) );
+			}
+			ulPos += _VIEW_DUMP_LEN_BINARYDUMP * sizeof( TCHAR );
+			if ( m_bDumpWithASCII ) {
+				switch( m_bDumpViewBindumpSepareter ) {
+				case 0: // none
+					break;
+				case 1: // space
+				case 4: // colon
+				case 6: // semicolon
+					ulPos++;
+					break;
+				case 2: // space2
+					ulPos += 2;
+					break;
+				case 3: // space3
+				case 5: // space and colon
+				case 7: // space and semicolon
+					ulPos += 3;
+					break;
+				}
+			}
+#if 1
+			for ( i = 0; i < 16; i++ ) {
+				wsprintf( tsz2, _T( "%X" ), i );
+				tsz[ ulPos + i ] = tsz2[ 0 ];
+			}
+			tsz[ ulPos + 16 ] = _T( '\r' );
+			tsz[ ulPos + 17 ] = _T( '\n' );
+			tsz[ ulPos + 18 ] = 0;
+			dwWrite = (DWORD)( _tcslen( tsz ) ) * sizeof( TCHAR );
+#else
+			_tcscpy( tsz2, _T( "+++ ASCII\r\n" ) );
+			CopyMemory( &tsz[ ulPos ], tsz2, _tcslen( tsz2 ) * sizeof( TCHAR ) );
+			dwWrite = (DWORD)( ulPos + _tcslen( tsz2 ) ) * sizeof( TCHAR );
+#endif
+			WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL );
+			if ( dwWrite != dwWritten ) {
+				DispError();
+				bResult = FALSE;
+			}
+			if ( bResult ) {
+				FillMemory( tsz, ulPos + 16, '-' );
+				tsz[ ulPos + 16 ] = _T( '\r' );
+				tsz[ ulPos + 17 ] = _T( '\n' );
+				tsz[ ulPos + 18 ] = 0;
+				dwWrite = (DWORD)( _tcslen( tsz ) ) * sizeof( TCHAR );
+				WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL );
+				if ( dwWrite != dwWritten ) {
+					DispError();
+					bResult = FALSE;
+				}
+			}
+			if ( bResult ) {
+				dwAddr = 0;
+				while ( dwAddr < m_dwSizeBin ) {
+					FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
+					ulPos = 0;
+					if ( m_bDumpViewAddress ) {
+						wsprintf( tsz2, _T( "%04X" ), dwAddr + m_dwStartAddress );
+						CopyMemory( tsz, tsz2, _tcslen( tsz2 ) * sizeof( TCHAR ) );
+						ulPos += _VIEW_DUMP_LEN_ADDRESS;
+					}
+					switch( m_bDumpViewAddressSepareter ) {
+					case 0: // none
+						break;
+					case 1: // space
+						ulPos++;
+						break;
+					case 2: // space2
+						ulPos += 2;
+						break;
+					case 3: // space3
+						ulPos += 3;
+						break;
+					case 4: // colon
+						CopyMemory( &tsz[ ulPos ], _T( ":" ), sizeof( TCHAR ) );
+						ulPos++;
+						break;
+					case 5: // space and colon
+						CopyMemory( &tsz[ ulPos ], _T( " : " ), 3 * sizeof( TCHAR ) );
+						ulPos += 3;
+						break;
+					}
+					for ( i = 0; i < 16; i++ ) {
+						if ( ( dwAddr + i ) >= m_dwSizeBin ) {
+							break;
+						} else {
+							wsprintf( tsz2, _T( "%02X" ), pbyData[ dwAddr + i ] );
+							CopyMemory( &tsz[ ulPos + i * 3 ], tsz2, _tcslen( tsz2 ) * sizeof( TCHAR ) );
+						}
+					}
+					if ( m_bDumpWithASCII ) {
+						ulPos += _VIEW_DUMP_LEN_BINARYDUMP;
+						switch( m_bDumpViewBindumpSepareter ) {
+						case 0: // none
+							break;
+						case 1: // space
+							ulPos++;
+							break;
+						case 2: // space2
+							ulPos += 2;
+							break;
+						case 3: // space3
+							ulPos += 3;
+							break;
+						case 4: // colon
+							CopyMemory( &tsz[ ulPos ], _T( ":" ), sizeof( TCHAR ) );
+							ulPos++;
+							break;
+						case 5: // space and colon
+							CopyMemory( &tsz[ ulPos ], _T( " : " ), 3 * sizeof( TCHAR ) );
+							ulPos += 3;
+							break;
+						case 6: // semicolon
+							CopyMemory( &tsz[ ulPos ], _T( ";" ), sizeof( TCHAR ) );
+							ulPos++;
+							break;
+						case 7: // space and semicolon
+							CopyMemory( &tsz[ ulPos ], _T( " ; " ), 3 * sizeof( TCHAR ) );
+							ulPos += 3;
+							break;
+						}
+						for ( i = 0; i < 16; i++ ) {
+							if ( ( dwAddr + i ) >= m_dwSizeBin )
+								break;
+							switch( m_bDumpAsciiType ) {
+							case 0: // normal
+							// UNICODE and caracter set not care, yet.
+								tsz2[ 0 ] = pbyData[ dwAddr + i ];
+								break;
+							case 1: // 
+								if ( ( pbyData[ dwAddr + i ] >= ' ' ) && ( pbyData[ dwAddr + i ] < 0x7f ) )
+									wsprintf( tsz2, _T( "%c" ), pbyData[ dwAddr + i ] );
+								else
+									_tcscpy( tsz2, _T( "." ) );
+								break;
+							case 2: // bit 0 - 6
+								tsz2[ 0 ] = pbyData[ dwAddr + i ] & 0x7f;
+								break;
+							}
+							CopyMemory( &tsz[ ulPos ], tsz2, sizeof( TCHAR ) );
+							ulPos += 1;
+						}
+					}
+					CopyMemory( &tsz[ ulPos ], _T( "\r\n" ), 2 * sizeof( TCHAR ) );
+					dwWrite = (DWORD)( ulPos + 2 ) * sizeof( TCHAR );
+					WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL );
+					if ( dwWrite != dwWritten ) {
+						DispError();
+						bResult = FALSE;
+						break;
+					}
+					dwAddr += 16;
+				}
+			}
+		}
+	}
+	CloseHandle( hFile );
+	return bResult;
+}
+
 BOOL CDisasm6801::ExportProject( PTSTR ptszFilename )
 {
 BOOL bResult = FALSE;
@@ -1562,6 +1766,13 @@ VOID CDisasm6801::Init( VOID )
 	m_bViewAsDB = FALSE;
 	m_bViewAsDW = FALSE;
 	m_bViewAsDC = FALSE;
+// for dump
+	m_bDumpViewAddress = TRUE;
+	m_bDumpViewAddressSepareter = 2; // 0 : none, 1 : space, 2 : space 2, 3 : space 3, 4 : with solon, 5 : space with colon
+	m_bDumpWithASCII = TRUE;
+	m_bDumpViewBindumpSepareter = 7; // 0 : none, 1 : space, 2 : space 2, 3 : space 3, 4 : with solon, 5 : space with colon,  6 : semicolon, 7 : space with semicolon
+	m_bDumpAsciiType = 1; // 0 : normal, 1 : > 0x20 and 0x7f, 2 : bit 0 - 6( for FCC/DC ).
+//
 	m_dwStartAddress = 0xf000;
 }
 
