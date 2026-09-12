@@ -644,8 +644,8 @@ BOOL bResult = FALSE;
 		if ( !m_pAttrHandler )
 			bResult = FALSE;
 
-	if ( bResult )
-		bResult = ReadBinFile();
+	//if ( bResult )
+	//	bResult = ReadBinFile();
 	if ( bResult ) {
 		m_pLabelHandler->Init();
 		bResult = Set6801Vector();
@@ -704,6 +704,11 @@ HGLOBAL hGlobal = nullptr;
 					pGlobal = GlobalLock( hGlobal );
 				ReadFile( hFile, pGlobal, dwSizeLo, &dwRead, NULL );
 				if ( dwRead == dwSizeLo ) {
+					if ( m_hBin ) {
+						GlobalFree( m_hBin );
+						m_hBin = nullptr;
+						m_dwSizeBin = 0;
+					}
 					m_hBin = hGlobal;
 					m_dwSizeBin = dwRead;
 					m_bPassed = _PASSED_NONE;
@@ -755,6 +760,7 @@ POpcodeInfo pInfo;
 		//m_dwPC = m_dwStartAddress;
 		dwAddr = 0;
 		while ( dwAddr < m_dwSizeBin ) {
+			bResult = TRUE;
 			dwCurAddress = ( dwAddr + m_dwStartAddress ) & 0xffff;
 			if ( m_pAttrHandler ) {
 				if ( m_pAttrHandler->IsDW( (WORD)dwCurAddress ) ) {
@@ -969,6 +975,7 @@ CLabelHandler::PLabelNameNode pLabelNode;
 		dwAddr = 0;
 		ZeroMemory( tszOperand, sizeof( tszOperand ) );
 		while ( dwAddr < m_dwSizeBin ) {
+			bResult = TRUE;
 			_tcscpy( tszOperand, _T( "" ) );
 			_tcscpy( tszAddress, _T( "" ) );
 			_tcscpy( tszMachineCode, _T( "" ) );

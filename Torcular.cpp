@@ -25,7 +25,7 @@ static BOOL g_bWriteError = FALSE;
 static DWORD g_dwWriteError = 0;
 
 // Option...
-BOOL g_bViewToWindow = TRUE;
+BOOL g_bViewToWindow = FALSE;
 
 // Locals...
 ATOM MyRegisterClass( HINSTANCE hInstance );
@@ -33,6 +33,7 @@ BOOL InitInstance( HINSTANCE hInstance, INT nCmdShow );
 LRESULT CALLBACK WndProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
 INT_PTR CALLBACK About( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
 BOOL GetOption( VOID );
+BOOL OpenBinaryFile( HWND hwnd );
 BOOL MakeDisassemble( HWND hwnd );
 BOOL MakeCrossReference( HWND hwnd );
 BOOL MakeDump( HWND hwnd );
@@ -42,6 +43,11 @@ BOOL ChooseViewFont( HWND hwnd, HWND hView );
 
 COMDLG_FILTERSPEC fpProjTypes[] = {
 	{ L"Project file(*.prj68)", L"*.prj68" },
+	{ L"All file(*.*)", L"*.*" }
+};
+COMDLG_FILTERSPEC fpBinTypes[] = {
+	{ L"Binary file(*.bin)", L"*.bin" },
+	{ L"Binary file(*.rom)", L"*.rom" },
 	{ L"All file(*.*)", L"*.*" }
 };
 COMDLG_FILTERSPEC fpDisasmTypes[] = {
@@ -204,6 +210,9 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 			bReady = GetOption();
 			if ( bReady )
 				g_pThis->DoDisasm();
+			break;
+		case IDM_OPEN_BINFILE:
+			OpenBinaryFile( hWnd );
 			break;
 		case IDM_MAKE_DISASMFILE:
 			MakeDisassemble( hWnd );
@@ -493,6 +502,56 @@ LPVOID pMsgBuf;
 //	}
 //	return bResult;
 //}
+
+BOOL OpenBinaryFile( HWND hwnd )
+{
+INT iRet;
+BOOL bResult = FALSE;
+TCHAR tszPath[ MAX_PATH ];
+PWSTR pwszFilePath = NULL;
+HRESULT hr;
+IShellItem* pItem = NULL;
+IFileOpenDialog* pFileOpen = NULL;
+
+	if ( !g_pThis )
+		return bResult;
+	if ( !hwnd )
+		return bResult;
+
+	hr = CoCreateInstance( CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS( &pFileOpen ) );
+	if ( SUCCEEDED( hr ) ) {
+		pFileOpen->SetFileTypes( _countof( fpBinTypes ), fpBinTypes );
+		pFileOpen->SetFileTypeIndex( 1 );
+		pFileOpen->SetTitle( L" Open binary file" );
+		hr = pFileOpen->Show( hwnd );
+		if ( SUCCEEDED( hr ) ) {
+			hr = pFileOpen->GetResult( &pItem );
+			if ( SUCCEEDED( hr ) ) {
+				hr = pItem->GetDisplayName( SIGDN_FILESYSPATH, &pwszFilePath );
+				if ( SUCCEEDED( hr ) ) {
+#ifndef _UNICODE
+					iRet = WideCharToMultiByte( CP_ACP, 0, pwszFilePath, -1, tszPath, sizeof( tszPath ), NULL, NULL );
+					if ( iRet > 0 ) {
+						bResult = TRUE;
+					}
+#else
+					_tcscpy( tszPath, pwszFilePath );
+					bResult = TRUE;
+#endif
+					CoTaskMemFree( pwszFilePath );
+				}
+				pItem->Release();
+			}
+		}
+		pFileOpen->Release();
+	}
+	if ( bResult ) {
+		bResult = g_pThis->SetBinFile( tszPath );
+		if ( bResult )
+			bResult = g_pThis->ReadBinFile();
+	}
+	return bResult;
+}
 
 BOOL MakeDisassemble( HWND hwnd )
 {
