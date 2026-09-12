@@ -33,6 +33,7 @@ BOOL InitInstance( HINSTANCE hInstance, INT nCmdShow );
 LRESULT CALLBACK WndProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
 INT_PTR CALLBACK About( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
 BOOL GetOption( VOID );
+BOOL MakeDisassemble( HWND hwnd );
 BOOL MakeCrossReference( HWND hwnd );
 BOOL ImportProjectFile( HWND hwnd );
 BOOL ExportProjectFile( HWND hwnd );
@@ -40,6 +41,10 @@ BOOL ChooseViewFont( HWND hwnd, HWND hView );
 
 COMDLG_FILTERSPEC fpProjTypes[] = {
 	{ L"Project file(*.prj68)", L"*.prj68" },
+	{ L"All file(*.*)", L"*.*" }
+};
+COMDLG_FILTERSPEC fpDisasmTypes[] = {
+	{ L"Disasm file(*.disasm68)", L"*.disasm68" },
 	{ L"All file(*.*)", L"*.*" }
 };
 COMDLG_FILTERSPEC fpXrefTypes[] = {
@@ -192,6 +197,9 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 			bReady = GetOption();
 			if ( bReady )
 				g_pThis->DoDisasm();
+			break;
+		case IDM_MAKE_DISASMFILE:
+			MakeDisassemble( hWnd );
 			break;
 		case IDM_MAKE_REFFILE:
 			MakeCrossReference( hWnd );
@@ -476,11 +484,137 @@ LPVOID pMsgBuf;
 //	return bResult;
 //}
 
+BOOL MakeDisassemble( HWND hwnd )
+{
+INT iRet;
+UINT uiTab;
+BOOL bResult = FALSE, bSw;
+DWORD dwIdxSelect = 0;
+TCHAR tszPath[ MAX_PATH ];
+PWSTR pszFilePath = nullptr;
+HANDLE hFile;
+HRESULT hr;
+IShellItem* pItem;
+IFileSaveDialog* pFileSave = nullptr;
+IFileDialogCustomize *pCustomize = nullptr;
+
+	if ( !g_pThis )
+		return bResult;
+	if ( !g_pThis->PrepareMakeCrossReference() )
+		return bResult;
+
+	hr = CoCreateInstance( CLSID_FileSaveDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS( &pFileSave ) );
+	if ( SUCCEEDED( hr ) ) {
+		pFileSave->SetFileTypes( _countof( fpDisasmTypes ), fpDisasmTypes );
+		pFileSave->SetFileTypeIndex( 1 );
+		pFileSave->SetDefaultExtension( L"disasm68" );
+		pFileSave->SetTitle( L"make Disassemble File" );
+		hr = pFileSave->QueryInterface( IID_PPV_ARGS( &pCustomize ) );
+		if ( SUCCEEDED( hr ) ) {
+			pCustomize->AddCheckButton( IDC_VIEW_ADDRESS, L"View Address", g_pThis->GetViewAddress() );
+			pCustomize->AddCheckButton( IDC_VIEW_MACHINECODE, L"View Machine code", g_pThis->GetViewMachineCode() );
+			pCustomize->AddCheckButton( IDC_VIEW_COMMENT_LABEL, L"View Label Comment", g_pThis->GetViewLabelComment() );
+			pCustomize->AddCheckButton( IDC_VIEW_COMMENT_EQU, L"View EQU Comment", g_pThis->GetViewEquComment() );
+			pCustomize->AddCheckButton( IDC_VIEW_COLON_LABEL, L"View Label Colon", g_pThis->GetViewLabelColon() );
+			pCustomize->AddCheckButton( IDC_VIEW_REFERENCEDFROM, L"View Referenced From", g_pThis->GetViewReferencedFrom() );
+			pCustomize->AddCheckButton( IDC_VIEW_USE_DB, L"Use DB(means FCB)", g_pThis->GetViewAsDB() );
+			pCustomize->AddCheckButton( IDC_VIEW_USE_DW, L"Use DW(means FDB)", g_pThis->GetViewAsDW() );
+			pCustomize->AddCheckButton( IDC_VIEW_USE_DC, L"Use DC(means FCC)", g_pThis->GetViewAsDC() );
+//
+			pCustomize->StartVisualGroup( IDC_GROUP_ADDRESS, L"" );
+			pCustomize->AddText( IDC_START_ADDRESS_CAPTION, L"Start Address : " );
+			pCustomize->AddEditBox( IDC_START_ADDRESS, L"F000" );
+			pCustomize->EndVisualGroup();
+//
+			pCustomize->StartVisualGroup( IDC_GROUP_TAB, L"" );
+			pCustomize->AddText( IDC_TAB_CAPTION, L"Tab Size : " );
+			pCustomize->AddComboBox( IDC_TAB_SIZE );
+			pCustomize->AddControlItem( IDC_TAB_SIZE, 0, L"4" );
+			pCustomize->AddControlItem( IDC_TAB_SIZE, 1, L"8" );
+			uiTab = g_pThis->GetTab();
+			if ( uiTab == 8 )
+				pCustomize->SetSelectedControlItem( IDC_TAB_SIZE, 1 );
+			else
+				pCustomize->SetSelectedControlItem( IDC_TAB_SIZE, 0 );
+			pCustomize->EndVisualGroup();
+//
+			pCustomize->Release();
+		}
+		hr = pFileSave->Show( hwnd );
+		if ( SUCCEEDED( hr ) ) {
+			hr = pFileSave->GetResult( &pItem );
+			if ( SUCCEEDED( hr ) ) {
+				hr = pItem->GetDisplayName( SIGDN_FILESYSPATH, &pszFilePath );
+#ifndef _UNICODE
+				if ( SUCCEEDED( hr ) ) {
+					iRet = WideCharToMultiByte( CP_ACP, 0, pszFilePath, -1, tszPath, sizeof( tszPath ), NULL, NULL );
+					if ( iRet > 0 ) {
+						bResult = TRUE;
+					}
+#else
+					_tcscpy( tszPath, pszFilePath );
+					bResult = TRUE;
+#endif
+					CoTaskMemFree( pszFilePath );
+					pItem->Release();
+				}
+				pFileSave->QueryInterface( IID_PPV_ARGS( &pCustomize ) );
+				if ( pCustomize ) {
+					pCustomize->GetCheckButtonState( IDC_VIEW_ADDRESS, &bSw );
+					g_pThis->SetViewAddress( bSw );
+					pCustomize->GetCheckButtonState( IDC_VIEW_MACHINECODE, &bSw );
+					g_pThis->SetViewMachineCode( bSw );
+					pCustomize->GetCheckButtonState( IDC_VIEW_COMMENT_LABEL, &bSw );
+					g_pThis->SetViewLabelComment( bSw );
+					pCustomize->GetCheckButtonState( IDC_VIEW_COMMENT_EQU, &bSw );
+					g_pThis->SetViewEquComment( bSw );
+					pCustomize->GetCheckButtonState( IDC_VIEW_COLON_LABEL, &bSw );
+					g_pThis->SetViewLabelColon( bSw );
+					pCustomize->GetCheckButtonState( IDC_VIEW_REFERENCEDFROM, &bSw );
+					g_pThis->SetViewReferencedFrom( bSw );
+					pCustomize->GetCheckButtonState( IDC_VIEW_USE_DB, &bSw );
+					g_pThis->SetViewAsDB( bSw );
+					pCustomize->GetCheckButtonState( IDC_VIEW_USE_DC, &bSw );
+					g_pThis->SetViewAsDC( bSw );
+					pCustomize->GetCheckButtonState( IDC_VIEW_USE_DW, &bSw );
+					g_pThis->SetViewAsDW( bSw );
+
+					pCustomize->GetSelectedControlItem( IDC_TAB_SIZE, &dwIdxSelect );
+					switch( dwIdxSelect ) {
+					case 0:
+						g_pThis->SetTab( 4 );
+						break;
+					//case 1:
+					default:
+						g_pThis->SetTab( 8 );
+						break;
+					}
+					pCustomize->Release();
+				}
+			}
+		}
+		pFileSave->Release();
+	}
+	if ( bResult ) {
+		hFile = CreateFile( tszPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
+		if ( hFile == INVALID_HANDLE_VALUE ) {
+			DispError();
+			return bResult;
+		}
+		g_hToWrite = hFile;
+		g_pThis->DoDisasm();
+		CloseHandle( hFile );
+		g_hToWrite = nullptr;
+	}
+
+	return bResult;
+}
+
 BOOL MakeCrossReference( HWND hwnd )
 {
 INT iRet;
-TCHAR tszPath[ MAX_PATH ];
 BOOL bResult = FALSE;
+TCHAR tszPath[ MAX_PATH ];
 PWSTR pszFilePath = nullptr;
 HRESULT hr;
 IShellItem* pItem;

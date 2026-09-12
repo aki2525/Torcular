@@ -186,6 +186,25 @@ public:
 	BOOL CreateAsmFile( VOID );
 	BOOL DoPass2( VOID );
 	UINT GetTab( VOID );
+	VOID SetTab( UINT uiTab ) { m_uiTab = uiTab; }
+	BOOL GetViewReferencedFrom( VOID ) { return m_bViewReferencedFrom; }
+	VOID SetViewReferencedFrom( BOOL bSw ) { m_bViewReferencedFrom = bSw; }
+	BOOL GetViewMachineCode( VOID ) { return m_bViewMachineCode; }
+	VOID SetViewMachineCode( BOOL bSw ) { m_bViewMachineCode = bSw; }
+	BOOL GetViewAddress( VOID ) { return m_bViewAddress; }
+	VOID SetViewAddress( BOOL bSw ) { m_bViewAddress = bSw; }
+	BOOL GetViewLabelComment( VOID ) { return m_bViewLabelComment; }
+	VOID SetViewLabelComment( BOOL bSw ) { m_bViewLabelComment = bSw; }
+	BOOL GetViewEquComment( VOID ) { return m_bViewEquComment; }
+	VOID SetViewEquComment( BOOL bSw ) { m_bViewEquComment = bSw; }
+	BOOL GetViewLabelColon( VOID ) { return m_bViewLabelColon; }
+	VOID SetViewLabelColon( BOOL bSw ) { m_bViewLabelColon = bSw; }
+	BOOL GetViewAsDB( VOID ) { return m_bViewAsDB; }
+	VOID SetViewAsDB( BOOL bSw ) { m_bViewAsDB = bSw; }
+	BOOL GetViewAsDC( VOID ) { return m_bViewAsDC; }
+	VOID SetViewAsDC( BOOL bSw ) { m_bViewAsDC = bSw; }
+	BOOL GetViewAsDW( VOID ) { return m_bViewAsDW; }
+	VOID SetViewAsDW( BOOL bSw ) { m_bViewAsDW = bSw; }
 //
 	//VOID WriteToFile( PTSTR ptszStr );
 	//VOID CloseFiles( VOID );
