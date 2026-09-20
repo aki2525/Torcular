@@ -1804,7 +1804,7 @@ HANDLE hFile = nullptr;
 
 BOOL CDisasm6801::ImportProject( PTSTR ptszFilename )
 {
-BOOL bResult = FALSE;
+BOOL bResult = FALSE, bHeader;
 TCHAR tsz[ MAX_PATH * 3 ];
 PCHAR pBuffer = nullptr;
 DWORD dwSizeLo, dwSizeHi, dwRead;
@@ -1853,6 +1853,7 @@ HGLOBAL hGlobal = nullptr;
 			m_pAttrHandler->Init();
 			m_pLabelHandler->Init();
 			m_bPassed = _PASSED_0;
+			bHeader = ReadProjectHeader( pBuffer, dwSizeLo );
 			if ( m_pAttrHandler ) {
 				AddMessage( _T( "Import data attributes ... ") );
 				bResult = m_pAttrHandler->ImportDataAttrs( pBuffer );
@@ -1875,6 +1876,11 @@ HGLOBAL hGlobal = nullptr;
 					}
 				}
 			}
+			if ( bResult ) {
+				if ( bHeader & _PROJECT_BINFILE ) {
+					ReadBinFile();
+				}
+			}
 		} else {
 			AddMessage( _T( "read ng\r\n" ) );
 		}
@@ -1886,8 +1892,123 @@ HGLOBAL hGlobal = nullptr;
 
 	if ( hGlobal )
 		GlobalFree( hGlobal );
-	AddMessage( _T( "\r\n" ) );
 
+	return bResult;
+}
+
+BOOL CDisasm6801::ReadProjectHeader( PCSTR pcszBuffer, DWORD dwSizeBuffer )
+{
+BOOL bResult = FALSE;
+DWORD i, dwAddr;
+PCSTR p, p0;
+TCHAR tsz[ MAX_PATH * 5 ];
+
+	if ( !pcszBuffer )
+		return bResult;
+	if ( !dwSizeBuffer )
+		return bResult;
+	dwAddr = 0;
+	p0 = pcszBuffer;
+	while( *p0 ) {
+		for ( i = 0; i < sizeof( tsz ) - 1; i++  ) {
+			tsz[ i ] = *p0;
+			if ( *p0 == 0 )
+				break;
+			if ( *p0 == '\r' ) {
+				tsz[ i ] = 0;
+				break;
+			}
+			if ( *p0 == '\n' ) {
+				tsz[ i ] = 0;
+				break;
+			}
+			p0++;
+		}
+		tsz[ i ] = 0;
+		if ( i ) {
+			p = strstr( tsz, "BinFile :" );
+			if ( p ) {
+				p += 9; // sizeof( "BinFile :" )
+				while( *p ) {
+					if ( *p == 0x20 ) {
+						p++;
+						continue;
+					}
+					if ( *p == 0x07 ) {
+						p++;
+						continue;
+					}
+					break;
+				}
+				if ( *p ) {
+					strcpy( m_tszBinPath, p );
+					bResult |= _PROJECT_BINFILE;
+				}
+			}
+			p = strstr( tsz, "ORG :" );
+			if ( p ) {
+				p += 5; // sizeof( "ORG :" )
+				while( *p ) {
+					if ( *p == 0x20 ) {
+						p++;
+						continue;
+					}
+					if ( *p == 0x07 ) {
+						p++;
+						continue;
+					}
+					break;
+				}
+				if ( *p == '$' ) {
+					p++;
+					if ( *p ) {
+						while( *p ) {
+							if ( ( *p >= '0' ) && ( *p <= '9' ) ) {
+								dwAddr *= 16;
+								dwAddr += *p - '0';
+							} else if ( ( *p >= 'a' ) && ( *p <= 'f' ) ) {
+								dwAddr *= 16;
+								dwAddr += *p - 'a' + 10;
+							} else if ( ( *p >= 'A' ) && ( *p <= 'F' ) ) {
+								dwAddr *= 16;
+								dwAddr += *p - 'A' + 10;
+							} else {
+								break;
+							}
+							p++;
+						}
+					}
+				} else {
+					if ( *p ) {
+						while( *p ) {
+							if ( ( *p >= '0' ) && ( *p <= '9' ) ) {
+								dwAddr *= 10;
+								dwAddr += *p - '0';
+							} else {
+								break;
+							}
+							p++;
+						}
+					}
+				}
+				m_dwStartAddress = dwAddr;
+				bResult |= _PROJECT_ADDRESS;
+			}
+			if ( bResult == ( _PROJECT_BINFILE | _PROJECT_ADDRESS ) )
+				break;
+		}
+		while( *p0 ) {
+			if ( *p0 == '\r' ) {
+				p0++;
+				continue;
+			}
+			if ( *p0 == '\n' ) {
+				p0++;
+				continue;
+			}
+			break;
+		}
+	}
 	return bResult;
 }
 

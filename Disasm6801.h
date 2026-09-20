@@ -25,6 +25,10 @@ enum {
 	_PASSED_2 = 0x2000 // processed pass 2
 };
 
+enum {
+	_PROJECT_BINFILE = 1,
+	_PROJECT_ADDRESS = 2,
+};
 enum AddressingMode {
 	MODE_INVALID = 0,
 	MODE_INHERENT, // inherent ... opcode only
@@ -223,6 +227,7 @@ public:
 	BOOL MakeCrossReference( PTSTR ptszFilename );
 	VOID RegisterVector( PBYTE pbyData, DWORD dwBaseAddr, DWORD dwVectorAddr, PCTSTR pctszVectorName = nullptr, PCTSTR pctszComment = nullptr );
 	BOOL PrepareMakeCrossReference();
+	BOOL ReadProjectHeader( PCSTR pcszBuffer, DWORD dwSizeBuffer );
 //	BOOL PrepareExportProject();
 //
 	PCTSTR GetMnemonicStr( MnemonicID Id );
