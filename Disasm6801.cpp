@@ -780,7 +780,7 @@ BOOL bResult = TRUE;
 	return bResult;
 }
 
-BOOL CDisasm6801::DoPass1( VOID )
+BOOL CDisasm6801::DoPass1( BOOL bImport )
 {
 BOOL bResult = FALSE;
 CHAR scOfs;
@@ -809,9 +809,11 @@ POpcodeInfo pInfo;
 						dwTmp = ( (DWORD)pbyData[ dwAddr ] << 8 ) | (DWORD)pbyData[ dwAddr + 1 ];
 						if ( ( dwTmp < m_dwStartAddress ) || ( dwTmp >= m_dwStartAddress + m_dwSizeBin ) ) {
 							//if ( !m_pLabelHandler->GetLabelName( dwTmp ) ) {
-							if ( !m_pLabelHandler->hasName( dwTmp ) ) {
-								wsprintf( tszEquName, _T( "EXT_%04X" ), dwTmp );
-								m_pLabelHandler->SetEquName( dwTmp, tszEquName );
+							if ( !bImport ) {
+								if ( !m_pLabelHandler->hasName( dwTmp ) ) {
+									wsprintf( tszEquName, _T( "EXT_%04X" ), dwTmp );
+									m_pLabelHandler->SetEquName( dwTmp, tszEquName );
+								}
 							}
 						} else {
 							m_pLabelHandler->RegisterLabel( _KIND_EXTENDED, dwTmp, dwCurAddress );
@@ -849,11 +851,13 @@ POpcodeInfo pInfo;
 				if ( ( byMneId == MNEM_JMP ) || ( byMneId == MNEM_JSR ) ) {
 					bKind = _KIND_JUMP;
 				} else {
-					if ( ( dwTmp < m_dwStartAddress ) || ( dwTmp >= m_dwStartAddress + m_dwSizeBin ) ) {
-						//if ( !m_pLabelHandler->GetLabelName( dwTmp ) ) {
-						if ( !m_pLabelHandler->hasName( dwTmp ) ) {
-							wsprintf( tszEquName, _T( "EXT_%04X" ), dwTmp );
-							m_pLabelHandler->SetEquName( dwTmp, tszEquName );
+					if ( !bImport ) {
+						if ( ( dwTmp < m_dwStartAddress ) || ( dwTmp >= m_dwStartAddress + m_dwSizeBin ) ) {
+							//if ( !m_pLabelHandler->GetLabelName( dwTmp ) ) {
+							if ( !m_pLabelHandler->hasName( dwTmp ) ) {
+								wsprintf( tszEquName, _T( "EXT_%04X" ), dwTmp );
+								m_pLabelHandler->SetEquName( dwTmp, tszEquName );
+							}
 						}
 					}
 				}
@@ -865,11 +869,13 @@ POpcodeInfo pInfo;
 					bKind = _KIND_JUMP;
 					m_pLabelHandler->RegisterLabel( bKind, dwTmp, dwCurAddress );
 				} else {
-					if ( ( dwTmp < m_dwStartAddress ) || ( dwTmp >= m_dwStartAddress + m_dwSizeBin ) ) {
-						//if ( !m_pLabelHandler->GetLabelName( dwTmp ) ) {
-						if ( !m_pLabelHandler->hasName( dwTmp ) ) {
-							wsprintf( tszEquName, _T( "RAM_%02X" ), dwTmp );
-							m_pLabelHandler->SetEquName( dwTmp, tszEquName );
+					if ( !bImport ) {
+						if ( ( dwTmp < m_dwStartAddress ) || ( dwTmp >= m_dwStartAddress + m_dwSizeBin ) ) {
+							//if ( !m_pLabelHandler->GetLabelName( dwTmp ) ) {
+							if ( !m_pLabelHandler->hasName( dwTmp ) ) {
+								wsprintf( tszEquName, _T( "RAM_%02X" ), dwTmp );
+								m_pLabelHandler->SetEquName( dwTmp, tszEquName );
+							}
 						}
 					}
 				}
@@ -962,7 +968,7 @@ CLabelHandler::PLabelNameNode pLabelNode;
 					FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
 					tsz[ _countof( tsz ) - 1 ] = '\0';
 				}
-				CopyMemory( tsz + lMnemonicTop, _T( "EQU" ), 3 * sizeof( TCHAR ) );
+				CopyMemory( tsz + lMnemonicTop, _PROJ_WORD_EQU, _tcslen( _PROJ_WORD_EQU ) * sizeof( TCHAR ) );
 				wsprintf( tszOperand, _T("$%04X"), i );
 				CopyMemory( tsz + lOperandTop, tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
 				CutLastSpace( tsz, _countof( tsz ) );
@@ -986,7 +992,7 @@ CLabelHandler::PLabelNameNode pLabelNode;
 							FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
 							tsz[ _countof( tsz ) - 1 ] = '\0';
 						}
-						CopyMemory( tsz + lMnemonicTop, _T( "EQU" ), 3 * sizeof( TCHAR ) );
+						CopyMemory( tsz + lMnemonicTop, _PROJ_WORD_EQU, _tcslen( _PROJ_WORD_EQU ) * sizeof( TCHAR ) );
 						wsprintf( tszOperand, _T( "$%04X" ), i );
 						CopyMemory( tsz + lOperandTop, tszOperand, _tcslen( tszOperand ) * sizeof( TCHAR ) );
 						if ( pLabelNode->tszComment[ 0 ] != _T( '\0' ) ) {
@@ -1753,7 +1759,7 @@ HANDLE hFile = nullptr;
 			bResult = FALSE;
 		}
 		if ( bResult ) {
-			wsprintf( tsz, _T( "BinFile : %s\r\n" ), m_tszBinPath );
+			wsprintf( tsz, _T( "%s %s\r\n" ), _PROJ_WORD_BINFILE, m_tszBinPath );
 			dwWrite = (DWORD)_tcslen( tsz ) * sizeof( TCHAR );
 			WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL );
 			if ( dwWrite != dwWritten ) {
@@ -1763,7 +1769,7 @@ HANDLE hFile = nullptr;
 			}
 		}
 		if ( bResult ) {
-			wsprintf( tsz, _T( "ORG : $%04X\r\n" ), m_dwStartAddress );
+			wsprintf( tsz, _T( "%s $%04X\r\n" ), _PROJ_WORD_ORG, m_dwStartAddress );
 			dwWrite = (DWORD)_tcslen( tsz ) * sizeof( TCHAR );
 			WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL );
 			if ( dwWrite != dwWritten ) {
@@ -1852,14 +1858,16 @@ HGLOBAL hGlobal = nullptr;
 			AddMessage( _T( "read ok\r\n") );
 			m_pAttrHandler->Init();
 			m_pLabelHandler->Init();
-			m_bPassed = _PASSED_0;
 			bHeader = ReadProjectHeader( pBuffer, dwSizeLo );
+			if ( bHeader & _PROJECT_BINFILE ) {
+				ReadBinFile();
+			}
+			m_bPassed = _PASSED_0;
 			if ( m_pAttrHandler ) {
 				AddMessage( _T( "Import data attributes ... ") );
 				bResult = m_pAttrHandler->ImportDataAttrs( pBuffer );
 				if ( bResult ) {
 					AddMessage( _T( "ok\r\n" ) );
-					m_bPassed |= _PASSED_1;
 				} else {
 					AddMessage( _T( "ng\r\n" ) );
 				}
@@ -1870,17 +1878,13 @@ HGLOBAL hGlobal = nullptr;
 					bResult = m_pLabelHandler->ImportFromBuffer( pBuffer );
 					if ( bResult ) {
 						AddMessage( _T( "ok\r\n" ) );
-						m_bPassed |= _PASSED_1;
 					} else {
 						AddMessage( _T( "ng\r\n" ) );
 					}
 				}
 			}
-			if ( bResult ) {
-				if ( bHeader & _PROJECT_BINFILE ) {
-					ReadBinFile();
-				}
-			}
+			if ( bResult )
+				DoPass1( TRUE );
 		} else {
 			AddMessage( _T( "read ng\r\n" ) );
 		}
@@ -1926,9 +1930,9 @@ TCHAR tsz[ MAX_PATH * 5 ];
 		}
 		tsz[ i ] = 0;
 		if ( i ) {
-			p = strstr( tsz, "BinFile :" );
+			p = strstr( tsz, _PROJ_WORD_BINFILEA );
 			if ( p ) {
-				p += 9; // sizeof( "BinFile :" )
+				p += strlen( _PROJ_WORD_BINFILEA ); // sizeof( "BinFile :" )
 				while( *p ) {
 					if ( *p == 0x20 ) {
 						p++;
@@ -1945,9 +1949,9 @@ TCHAR tsz[ MAX_PATH * 5 ];
 					bResult |= _PROJECT_BINFILE;
 				}
 			}
-			p = strstr( tsz, "ORG :" );
+			p = strstr( tsz, _PROJ_WORD_ORGA );
 			if ( p ) {
-				p += 5; // sizeof( "ORG :" )
+				p += strlen( _PROJ_WORD_ORGA );
 				while( *p ) {
 					if ( *p == 0x20 ) {
 						p++;

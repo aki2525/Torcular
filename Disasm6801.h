@@ -191,7 +191,7 @@ public:
 	BOOL ReadBinFile( VOID );
 	BOOL ReadLabelFile( VOID );
 	BOOL DoPass0( VOID );
-	BOOL DoPass1( VOID );
+	BOOL DoPass1( BOOL bImport = FALSE );
 	BOOL CreateAsmFile( VOID );
 	BOOL DoPass2( VOID );
 	UINT GetTab( VOID );

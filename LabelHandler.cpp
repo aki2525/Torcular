@@ -323,7 +323,7 @@ DWORD i, dwWrite, dwWritten;
 	if ( !hFile )
 		return FALSE;
 
-	wsprintf( tsz, _T( "LABEL :\r\n" ) );
+	wsprintf( tsz, _T( "%s :\r\n" ), _PROJ_WORD_LABEL );
 	dwWrite = (DWORD)_tcslen( tsz ) * sizeof( TCHAR );
 	bResult = WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL );
 	if ( dwWrite != dwWritten )
@@ -400,7 +400,7 @@ VOID CLabelHandler::ProcessImportedLabel( DWORD dwAddr, PCSTR pcszBufName, PCSTR
 		return;
 	if ( !pcszBufName )
 		return;
-	if ( !pcszBufName[ 0 ] == '\0' )
+	if ( pcszBufName[ 0 ] == '\0' )
 		return;
 
 #ifdef UNICODE
@@ -422,7 +422,7 @@ TCHAR tszComment[ _MAX_COMMENT ];
 BOOL CLabelHandler::ImportFromBuffer( PCSTR pcszBuffer )
 {
 INT iDigit, iLenName, iLenComment;
-BOOL bDigit, bIsEquMode = FALSE;
+BOOL bDigit, bIsEquMode = FALSE, bSkip, bIsDataMode = FALSE;
 TCHAR tszBufName[ _MAX_LABEL ];
 TCHAR tszBufComment[ _MAX_COMMENT ];
 DWORD dwAddr;
@@ -451,23 +451,55 @@ PCSTR p, pNext;
 			continue;
 		}
 
-		if ( !_strnicmp( p, "LABEL", 5 ) ) {
-			pNext = p + 5;
+		bSkip = FALSE;
+		if ( !_strnicmp( p, _PROJ_WORD_BINFILEA, strlen( _PROJ_WORD_BINFILEA ) ) ) {
+			bSkip = TRUE;
+		}
+		if ( !_strnicmp( p, _PROJ_WORD_ORGA, strlen( _PROJ_WORD_ORGA ) ) ) {
+			bSkip = TRUE;
+		}
+		if ( bSkip ) {
+			bIsDataMode = FALSE;
+			bIsEquMode = FALSE;
+			while ( ( *p != '\0' ) && ( *p != '\n' ) && ( *p != '\r' ) ) {
+				p++;
+			}
+			while ( ( *p == '\n' ) || ( *p == '\r' ) ) {
+				p++;
+			}
+			continue;
+		}
+		if ( !_strnicmp( p, _PROJ_WORD_DATAA, strlen( _PROJ_WORD_DATAA ) ) ) {
+			pNext = p + strlen( _PROJ_WORD_DATAA );
 			while ( ( *pNext == ' ' ) || ( *pNext == '\t' ) )
 				pNext++;
 			if ( ( *pNext == ':' ) ||(  *pNext == '\r' ) || ( *pNext == '\n' ) ) {
+				bIsDataMode = TRUE;
 				bIsEquMode = FALSE;
 				while ( ( *p != '\0' ) && ( *p != '\n' ) && ( *p != '\r' ) )
 					p++;
 				continue;
 			}
 		}
-		if ( !_strnicmp( p, "EQU", 3 ) ) {
-			pNext = p + 3;
+		if ( !_strnicmp( p, _PROJ_WORD_LABELA, strlen( _PROJ_WORD_LABELA ) ) ) {
+			pNext = p + strlen( _PROJ_WORD_LABELA );
+			while ( ( *pNext == ' ' ) || ( *pNext == '\t' ) )
+				pNext++;
+			if ( ( *pNext == ':' ) ||(  *pNext == '\r' ) || ( *pNext == '\n' ) ) {
+				bIsEquMode = FALSE;
+				bIsDataMode = FALSE;
+				while ( ( *p != '\0' ) && ( *p != '\n' ) && ( *p != '\r' ) )
+					p++;
+				continue;
+			}
+		}
+		if ( !_strnicmp( p, _PROJ_WORD_EQUA, strlen( _PROJ_WORD_EQUA ) ) ) {
+			pNext = p + strlen( _PROJ_WORD_EQUA );
 			while ( ( *pNext == ' ' ) || ( *pNext == '\t' ) )
 				pNext++;
 			if ( ( *pNext == ':' ) ||(  *pNext == '\r' ) || ( *pNext == '\n' ) ) {
 				bIsEquMode = TRUE;
+				bIsDataMode = FALSE;
 				while ( ( *p != '\0' ) && ( *p != '\n' ) && ( *p != '\r' ) )
 					p++;
 				continue;
@@ -541,16 +573,18 @@ PCSTR p, pNext;
 			tszBufComment[ iLenComment ] = '\0';
 		}
 
-		if ( ( iLenName > 0 ) && ( dwAddr < _MAX_ADDRESS ) ) {
+		if ( !bIsDataMode ) {
+			if ( ( iLenName > 0 ) && ( dwAddr < _MAX_ADDRESS ) ) {
 #ifdef _SUPPORT_LABEL_ALIAS
-			ProcessImportedLabel( dwAddr, tszBufName, tszBufComment, bIsEquMode );
+				ProcessImportedLabel( dwAddr, tszBufName, tszBufComment, bIsEquMode );
 #else
-			if ( bIsEquMode ) {
-				SetEquName( dwAddr, tszBufName );
-			} else {
-				SetLabelName( dwAddr, tszBufName );
-			}
+				if ( bIsEquMode ) {
+					SetEquName( dwAddr, tszBufName );
+				} else {
+					SetLabelName( dwAddr, tszBufName );
+				}
 #endif
+			}
 		}
 		while ( ( *p != '\0' ) && ( *p != '\n' ) && ( *p != '\r' ) ) {
 			p++;

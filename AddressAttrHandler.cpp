@@ -13,7 +13,7 @@ DWORD dwAddr, dwNextAddr, dwRangeEnd;
 	if ( !hFile )
 		return FALSE;
 
-	wsprintf( tsz, _T( "\r\nDATA :\r\n" ) );
+	wsprintf( tsz, "\r\n%s :\r\n", _PROJ_WORD_DATAA );
 	dwWrite = (DWORD)_tcslen( tsz ) * sizeof( TCHAR );
 	WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL );
 	if ( dwWrite != dwWritten ) {
@@ -104,12 +104,32 @@ EAddressAttr eAttr;
 			continue;
 		}
 
-		if ( _tcsnicmp( p, _T( "LABEL" ), 5 ) == 0 ) {
+		if ( !_strnicmp( p, _PROJ_WORD_BINFILEA, strlen( _PROJ_WORD_BINFILEA ) ) ) {
+			bDataSection = FALSE;
+			while ( ( *p != '\0' ) && ( *p != '\n' ) && ( *p != '\r' ) ) {
+				p++;
+			}
+			while ( ( *p == '\n' ) || ( *p == '\r' ) ) {
+				p++;
+			}
+			continue;
+		}
+		if ( !_strnicmp( p, _PROJ_WORD_ORGA, strlen( _PROJ_WORD_ORGA ) ) ) {
+			bDataSection = FALSE;
+			while ( ( *p != '\0' ) && ( *p != '\n' ) && ( *p != '\r' ) ) {
+				p++;
+			}
+			while ( ( *p == '\n' ) || ( *p == '\r' ) ) {
+				p++;
+			}
+			continue;
+		}
+		if ( !_strnicmp( p, _PROJ_WORD_LABELA, strlen( _PROJ_WORD_LABELA ) ) ) {
 			bDataSection = FALSE;
 			while ( ( *p != '\0' ) && ( *p != '\n' ) && ( *p != '\r' ) )
 				p++;
 			continue;
-		} else if ( _tcsnicmp( p, _T( "DATA" ), 4 ) == 0 ) {
+		} else if ( !_strnicmp( p, _PROJ_WORD_DATAA, strlen( _PROJ_WORD_DATAA ) ) ) {
 			bDataSection = TRUE;
 			while ( ( *p != '\0' ) && ( *p != '\n' ) && ( *p != '\r' ) )
 				p++;
