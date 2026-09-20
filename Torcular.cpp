@@ -208,8 +208,10 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 			break;
 		case IDM_HERE_WE_GO:
 			bReady = GetOption();
+			//if ( bReady )
+			//	g_pThis->DoDisasm();
 			if ( bReady )
-				g_pThis->DoDisasm();
+				g_pThis->ReadBinFile();
 			break;
 		case IDM_OPEN_BINFILE:
 			OpenBinaryFile( hWnd );
@@ -363,7 +365,7 @@ PVOID pMsgBuf;
 }
 
 
-VOID AddMessage( PTSTR ptszStr )
+VOID AddMessage( PCTSTR pctszStr )
 {
 CHARRANGE cr;
 
@@ -372,7 +374,7 @@ CHARRANGE cr;
 		cr.cpMin = -1;
 		cr.cpMax = -1;
 		SendMessage( g_hwndView, EM_EXSETSEL, 0, (LPARAM)&cr );
-		SendMessage( g_hwndView, EM_REPLACESEL, FALSE, (LPARAM)ptszStr );
+		SendMessage( g_hwndView, EM_REPLACESEL, FALSE, (LPARAM)pctszStr );
 		//SendMessage( g_hwndView, WM_SETREDRAW, TRUE, 0 );
 		SendMessage( g_hwndView, EM_SCROLLCARET, 0, 0 );
 		//InvalidateRect( g_hwndView, NULL, TRUE );
@@ -559,7 +561,7 @@ INT iRet;
 UINT uiTab;
 BOOL bResult = FALSE, bSw;
 DWORD dwIdxSelect = 0;
-TCHAR tszPath[ MAX_PATH ];
+TCHAR tsz[ MAX_PATH * 3 ], tszPath[ MAX_PATH ];
 PWSTR pszFilePath = nullptr;
 HANDLE hFile;
 HRESULT hr;
@@ -567,10 +569,12 @@ IShellItem* pItem;
 IFileSaveDialog* pFileSave = nullptr;
 IFileDialogCustomize *pCustomize = nullptr;
 
-	if ( !g_pThis )
+	if ( !g_pThis ) {
+		AddMessage( _T( "Internal Error\r\n" ) );
 		return bResult;
-	if ( !g_pThis->PrepareMakeCrossReference() )
-		return bResult;
+	}
+	//if ( !g_pThis->PrepareMakeCrossReference() )
+	//	return bResult;
 
 	hr = CoCreateInstance( CLSID_FileSaveDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS( &pFileSave ) );
 	if ( SUCCEEDED( hr ) ) {
@@ -665,16 +669,25 @@ IFileDialogCustomize *pCustomize = nullptr;
 		pFileSave->Release();
 	}
 	if ( bResult ) {
+		wsprintf( tsz, _T( "Make disassemble file to : %s ... " ), tszPath );
+		AddMessage( tsz );
 		hFile = CreateFile( tszPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
 		if ( hFile == INVALID_HANDLE_VALUE ) {
+			AddMessage( _T( "ng\r\n" ) );
 			DispError();
 			return bResult;
 		}
+		AddMessage( _T( "\r\n" ) );
 		g_hToWrite = hFile;
-		g_pThis->DoDisasm();
+		bResult = g_pThis->DoDisasm();
 		CloseHandle( hFile );
+		if ( bResult )
+			AddMessage( _T( "Succeeded.\r\n" ) );
+		else
+			AddMessage( _T( "Failed.\r\n" ) );
 		g_hToWrite = nullptr;
 	}
+	AddMessage( _T( "\r\n" ) );
 
 	return bResult;
 }
@@ -689,10 +702,14 @@ HRESULT hr;
 IShellItem* pItem;
 IFileSaveDialog* pFileSave = nullptr;
 
-	if ( !g_pThis )
+	if ( !g_pThis ) {
+		AddMessage( _T( "Internal Error\r\n" ) );
 		return bResult;
-	if ( !g_pThis->PrepareMakeCrossReference() )
+	}
+	if ( !g_pThis->PrepareMakeCrossReference() ) {
+		AddMessage( _T( "Internal Error\r\n" ) );
 		return bResult;
+	}
 
 	hr = CoCreateInstance( CLSID_FileSaveDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS( &pFileSave ) );
 	if ( SUCCEEDED( hr ) ) {
@@ -726,6 +743,11 @@ IFileSaveDialog* pFileSave = nullptr;
 	if ( bResult ) {
 		bResult = g_pThis->ExportCrossReferenceTable( tszPath );
 	}
+	if ( bResult )
+		AddMessage( _T( "Succeeded.\r\n" ) );
+	else
+		AddMessage( _T( "Failed.\r\n" ) );
+	AddMessage( _T( "\r\n" ) );
 
 	return bResult;
 }
@@ -740,8 +762,10 @@ HRESULT hr;
 IShellItem* pItem;
 IFileSaveDialog* pFileSave = nullptr;
 
-	if ( !g_pThis )
+	if ( !g_pThis ) {
+		AddMessage( _T( "Internal Error\r\n" ) );
 		return bResult;
+	}
 
 	hr = CoCreateInstance( CLSID_FileSaveDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS( &pFileSave ) );
 	if ( SUCCEEDED( hr ) ) {
@@ -776,6 +800,12 @@ IFileSaveDialog* pFileSave = nullptr;
 		bResult = g_pThis->DumpBinary( tszPath );
 	}
 
+	if ( bResult )
+		AddMessage( _T( "Succeeded.\r\n" ) );
+	else
+		AddMessage( _T( "Failed.\r\n" ) );
+	AddMessage( _T( "\r\n" ) );
+
 	return bResult;
 }
 
@@ -789,10 +819,14 @@ HRESULT hr;
 IShellItem* pItem = NULL;
 IFileOpenDialog* pFileOpen = NULL;
 
-	if ( !g_pThis )
+	if ( !g_pThis ) {
+		AddMessage( _T( "Internal Error\r\n" ) );
 		return bResult;
-	if ( !hwnd )
+	}
+	if ( !hwnd ) {
+		AddMessage( _T( "Internal Error\r\n" ) );
 		return bResult;
+	}
 
 	hr = CoCreateInstance( CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS( &pFileOpen ) );
 	if ( SUCCEEDED( hr ) ) {
@@ -824,6 +858,11 @@ IFileOpenDialog* pFileOpen = NULL;
 	if ( bResult ) {
 		bResult = g_pThis->ImportProject( tszPath );
 	}
+	if ( bResult )
+		AddMessage( _T( "Succeeded.\r\n" ) );
+	else
+		AddMessage( _T( "Failed.\r\n" ) );
+	AddMessage( _T( "\r\n" ) );
 
 	return bResult;
 }
@@ -875,6 +914,11 @@ IFileSaveDialog* pFileSave = nullptr;
 	if ( bResult ) {
 		bResult = g_pThis->ExportProject( tszPath );
 	}
+	if ( bResult )
+		AddMessage( _T( "Succeeded.\r\n" ) );
+	else
+		AddMessage( _T( "Failed.\r\n" ) );
+	AddMessage( _T( "\r\n" ) );
 
 	return bResult;
 }

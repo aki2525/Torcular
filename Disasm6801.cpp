@@ -510,11 +510,14 @@ BOOL CDisasm6801::Set6801Vector( VOID )
 BOOL bResult = FALSE;
 PBYTE pbyData = NULL;
 
-	if ( !m_pLabelHandler )
+	if ( !m_pLabelHandler ) {
+		AddMessage( _T( "Internal Error\r\n" ) );
 		return bResult;
+	}
 	if ( m_hBin )
 		pbyData = (PBYTE)GlobalLock( m_hBin );
 	if ( pbyData ) {
+		AddMessage( _T( "Set 6801 vectors\r\n" ) );
 		bResult = TRUE;
 
 		RegisterVector( pbyData, m_dwStartAddress, 0xFFF0, _T( "SCI_INT" ), _T( "Serial Communications Interface Interrupt" ) );
@@ -550,6 +553,8 @@ PBYTE pbyData = NULL;
 		m_pLabelHandler->RegisterEqu( 0x0012, _T( "RDR" ), _T( "Receive Data Register" ) );
 		m_pLabelHandler->RegisterEqu( 0x0013, _T( "TDR" ), _T( "Transmit Data Register" ) );
 		m_pLabelHandler->RegisterEqu( 0x0014, _T( "RAMCR" ), _T( "RAM Control Register" ) );
+	} else {
+		AddMessage( _T( "Target file not specified\r\n" ) );
 	}
 	return bResult;
 }
@@ -572,67 +577,62 @@ BOOL CDisasm6801::PrepareMakeCrossReference( VOID )
 {
 BOOL bResult = TRUE;
 
-	if ( !( m_bPassed & _PASSED_1 ) ) {
+	if ( !m_pLabelHandler ) {
+		AddMessage( _T( "Internal Error\r\n" ) );
 		bResult = FALSE;
 	}
-	if ( !( m_bPassed & _PASSED_2 ) ) {
-		bResult = FALSE;
-	}
-	if ( !bResult ) {
-		if ( m_pLabelHandler ) {
-			if ( m_pAttrHandler ) {
-				bResult = ReadBinFile();
-				if ( bResult ) {
-					m_pLabelHandler->Init();
-					bResult = Set6801Vector();
-				}
-				if ( bResult ) {
-					bResult = DoPass1();
-				}
-				if ( bResult ) {
-					bResult = DoPass2();
-				}
-			}
+	if ( bResult ) {
+		if ( !m_pAttrHandler ) {
+			AddMessage( _T( "Internal Error\r\n" ) );
+			bResult = FALSE;
 		}
 	}
-	if ( !( m_bPassed & _PASSED_1 ) ) {
-		bResult = FALSE;
+	if ( bResult ) {
+		if ( !( m_bPassed & _PASSED_0 ) ) {
+			bResult = DoPass0();
+		}
 	}
-	if ( !( m_bPassed & _PASSED_2 ) ) {
-		bResult = FALSE;
+	if ( bResult ) {
+		if ( !( m_bPassed & _PASSED_1 ) ) {
+			bResult = DoPass1();
+		}
+	}
+	if ( bResult ) {
+		if ( !( m_bPassed & _PASSED_2 ) ) {
+			bResult = DoPass2();
+		}
 	}
 	return bResult;
 }
 
-BOOL CDisasm6801::PrepareExportProject( VOID )
-{
-BOOL bResult = TRUE;
-
-	if ( !( m_bPassed & _PASSED_1 ) ) {
-		bResult = FALSE;
-	}
-	if ( !( m_bPassed & _PASSED_2 ) ) {
-		bResult = FALSE;
-	}
-	if ( !bResult ) {
-		if ( m_pLabelHandler ) {
-			if ( m_pAttrHandler ) {
-				bResult = ReadBinFile();
-				if ( bResult ) {
-					m_pLabelHandler->Init();
-					bResult = Set6801Vector();
-				}
-				if ( bResult ) {
-					bResult = DoPass1();
-				}
-			}
-		}
-	}
-	if ( !( m_bPassed & _PASSED_1 ) ) {
-		bResult = FALSE;
-	}
-	return bResult;
-}
+//BOOL CDisasm6801::PrepareExportProject( VOID )
+//{
+//BOOL bResult = TRUE;
+//
+//	if ( !( m_bPassed & _PASSED_0 ) )
+//		bResult = FALSE;
+//	if ( !( m_bPassed & _PASSED_1 ) )
+//		bResult = FALSE;
+//	if ( !( m_bPassed & _PASSED_2 ) )
+//		bResult = FALSE;
+//	if ( !bResult ) {
+//		if ( m_pLabelHandler ) {
+//			if ( m_pAttrHandler ) {
+//				bResult = ReadBinFile();
+//				if ( bResult ) {
+//					bResult = DoPass0();
+//				}
+//				if ( bResult ) {
+//					bResult = DoPass1();
+//				}
+//			}
+//		}
+//	}
+//	if ( !( m_bPassed & _PASSED_1 ) ) {
+//		bResult = FALSE;
+//	}
+//	return bResult;
+//}
 
 BOOL CDisasm6801::DoDisasm( VOID )
 {
@@ -647,15 +647,18 @@ BOOL bResult = FALSE;
 	//if ( bResult )
 	//	bResult = ReadBinFile();
 	if ( bResult ) {
-		m_pLabelHandler->Init();
-		bResult = Set6801Vector();
+		if ( !( m_bPassed & _PASSED_0 ) ) {
+			bResult = DoPass0();
+		}
 	}
 	if ( bResult ) {
-		DoPass1();
+		if ( !( m_bPassed & _PASSED_1 ) ) {
+			bResult = DoPass1();
+		}
 	}
 	//CreateAsmFile();
 	if ( bResult ) {
-		DoPass2();
+		bResult = DoPass2();
 	}
 	//CloseFiles();
 	//if ( bResult ) {
@@ -693,6 +696,8 @@ HANDLE hFile;
 HGLOBAL hGlobal = nullptr;
 
 	if ( _tcslen( m_tszBinPath ) ) {
+		wsprintf( tsz, _T( "Open bin file : %s ... " ), m_tszBinPath );
+		AddMessage( tsz );
 		hFile = CreateFile( m_tszBinPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
 		if ( hFile == INVALID_HANDLE_VALUE  ) {
 			DispError();
@@ -711,19 +716,29 @@ HGLOBAL hGlobal = nullptr;
 					}
 					m_hBin = hGlobal;
 					m_dwSizeBin = dwRead;
+					wsprintf( tsz, _T( "ok( %dBytes )\r\n" ), m_dwSizeBin );
+					AddMessage( tsz );
+					if ( m_pLabelHandler )
+						m_pLabelHandler->Init();
+					if ( m_pAttrHandler )
+						m_pAttrHandler->Init();
 					m_bPassed = _PASSED_NONE;
 					bResult = TRUE;
 				} else {
+					AddMessage( _T( "ng\r\n" ) );
 					DispError();
 				}
 				GlobalUnlock( hGlobal );
 			} else {
-				wsprintf( tsz, _T( "Bin file too large" ) );
-				AddMessage( tsz );
+				AddMessage( _T( "ng\r\n" ) );
+				AddMessage( _T( "Bin file too large\r\n" ) );
 			}
 			CloseHandle( hFile );
 		}
+	} else {
+		AddMessage( _T( "Target file not specified\r\n" ) );
 	}
+	AddMessage( _T( "\r\n" ) );
 	return bResult;
 }
 
@@ -742,6 +757,29 @@ BOOL bResult = FALSE;
 //	WriteFile( tsz );
 //}
 
+BOOL CDisasm6801::DoPass0( VOID )
+{
+BOOL bResult = TRUE;
+
+	AddMessage( _T( "Pass 0 ... " ) );
+	if ( !m_pLabelHandler )
+		bResult = FALSE;
+	if ( !m_pAttrHandler )
+		bResult = FALSE;
+	m_pLabelHandler->Init();
+	m_pAttrHandler->Init();
+	if ( bResult ) {
+		AddMessage( _T( "ok\r\n") );
+	} else {
+		AddMessage( _T( "ng\r\n") );
+	}
+	if ( m_bUse6801Vector )
+		bResult = Set6801Vector();
+	m_bPassed = _PASSED_0; // reset PASSED_1 and PASSED_2
+
+	return bResult;
+}
+
 BOOL CDisasm6801::DoPass1( VOID )
 {
 BOOL bResult = FALSE;
@@ -753,8 +791,11 @@ DWORD dwAddr, dwLength, dwCurAddress, dwTmp;
 LABEL_KIND bKind;
 POpcodeInfo pInfo;
 
-	if ( !m_hBin )
+	AddMessage( _T( "Pass 1 ... " ) );
+	if ( !m_hBin ) {
+		AddMessage( _T( "Target file not specified\r\n" ) );
 		return bResult;
+	}
 	pbyData = (PBYTE)GlobalLock( m_hBin );
 	if ( pbyData ) {
 		//m_dwPC = m_dwStartAddress;
@@ -844,7 +885,10 @@ POpcodeInfo pInfo;
 			dwAddr += dwLength;
 		}
 		GlobalUnlock( m_hBin );
+		AddMessage( _T( "ok\r\n" ) );
 		m_bPassed |= _PASSED_1;
+	} else {
+		AddMessage( _T( "Internal Error : cannot read memory\r\n" ) );
 	}
 	return bResult;
 }
@@ -876,8 +920,11 @@ CLabelHandler::PLabelNameNode pEquNode;
 CLabelHandler::PLabelNameNode pLabelNode;
 #endif
 
-	if ( !m_hBin )
+	AddMessage( _T( "Pass 2 ... " ) );
+	if ( !m_hBin ) {
+		AddMessage( _T( "Target file not specified\r\n" ) );
 		return bResult;
+	}
 	ZeroMemory( tszOperand, sizeof( tszOperand ) );
 	lTmp = 0;
 	if ( m_bViewAddress ) {
@@ -1236,7 +1283,10 @@ CLabelHandler::PLabelNameNode pLabelNode;
 			dwAddr += dwLength;
 		}
 		GlobalUnlock( m_hBin );
+		AddMessage( _T( "ok\r\n" ) );
 		m_bPassed |= _PASSED_2;
+	} else {
+		AddMessage( _T( "Internal Error : cannot read memory\r\n" ) );
 	}
 	return bResult;
 }
@@ -1441,13 +1491,22 @@ BOOL CDisasm6801::DumpBinary( PTSTR ptszFilename )
 INT i;
 BOOL bResult = FALSE;
 ULONG ulPos;
-TCHAR tsz[ MAX_PATH ], tsz2[ MAX_PATH ];
+TCHAR tsz[ MAX_PATH * 3 ], tsz2[ MAX_PATH ];
 DWORD dwWrite, dwWritten, dwAddr;
 PBYTE pbyData;
 HANDLE hFile;
 
+	if ( !ptszFilename )
+		return bResult;
+	if ( !_tcslen( ptszFilename ) ) {
+		AddMessage( _T( "Target file not specified\r\n" ) );
+		return bResult;
+	}
+	wsprintf( tsz, _T( "Make binary dump to file : %s ... " ), ptszFilename );
+	AddMessage( tsz );
 	hFile = CreateFile( ptszFilename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
 	if ( hFile == INVALID_HANDLE_VALUE ) {
+		AddMessage( _T( "ng\r\n" ) );
 		DispError();
 		return bResult;
 	} else {
@@ -1516,6 +1575,7 @@ HANDLE hFile;
 #endif
 			WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL );
 			if ( dwWrite != dwWritten ) {
+				AddMessage( _T( "ng\r\n" ) );
 				DispError();
 				bResult = FALSE;
 			}
@@ -1527,6 +1587,7 @@ HANDLE hFile;
 				dwWrite = (DWORD)( _tcslen( tsz ) ) * sizeof( TCHAR );
 				WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL );
 				if ( dwWrite != dwWritten ) {
+					AddMessage( _T( "ng\r\n" ) );
 					DispError();
 					bResult = FALSE;
 				}
@@ -1534,6 +1595,8 @@ HANDLE hFile;
 			if ( bResult ) {
 				dwAddr = 0;
 				while ( dwAddr < m_dwSizeBin ) {
+					if ( !bResult )
+						break;
 					FillMemory( tsz, sizeof( tsz ) - 1, ' ' );
 					ulPos = 0;
 					if ( m_bDumpViewAddress ) {
@@ -1627,6 +1690,7 @@ HANDLE hFile;
 					dwWrite = (DWORD)( ulPos + 2 ) * sizeof( TCHAR );
 					WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL );
 					if ( dwWrite != dwWritten ) {
+						AddMessage( _T( "ng\r\n" ) );
 						DispError();
 						bResult = FALSE;
 						break;
@@ -1636,39 +1700,104 @@ HANDLE hFile;
 			}
 		}
 	}
+	if ( bResult )
+		AddMessage( _T( "ok\r\n" ) );
 	CloseHandle( hFile );
+
 	return bResult;
 }
 
 BOOL CDisasm6801::ExportProject( PTSTR ptszFilename )
 {
 BOOL bResult = FALSE;
-TCHAR tsz[ MAX_PATH ];
+TCHAR tsz[ MAX_PATH * 3 ];
 DWORD dwWrite, dwWritten;
-HANDLE hFile;
+HANDLE hFile = nullptr;
 	
-	hFile = CreateFile( ptszFilename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
-	if ( hFile == INVALID_HANDLE_VALUE ) {
-		DispError();
+	if ( !ptszFilename )
+		return bResult;
+	if ( !m_pAttrHandler ) {
+		AddMessage( _T( "Internal Error\r\n" ) );
 		return bResult;
 	}
-
-	wsprintf( tsz, _T( "ORG : $%04X\r\n" ), m_dwStartAddress );
-	dwWrite = (DWORD)_tcslen( tsz ) * sizeof( TCHAR );
-	WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL );
-	if ( dwWrite == dwWritten ) {
-		if ( m_pLabelHandler ) {
-			bResult = m_pLabelHandler->ExportToStream( hFile );
+	if ( !m_pLabelHandler ) {
+		AddMessage( _T( "Internal Error\r\n" ) );
+		return bResult;
+	}
+	if ( !_tcslen( ptszFilename ) ) {
+		AddMessage( _T( "Target file not specified\r\n" ) );
+		return bResult;
+	}
+	if ( !_tcslen( m_tszBinPath ) ) {
+		AddMessage( _T( "Target binary file not specified\r\n" ) );
+		return bResult;
+	}
+	if ( !( m_bPassed & _PASSED_0 ) ) {
+		bResult = DoPass0();
+	} else {
+		bResult = TRUE;
+	}
+	if ( bResult ) {
+		if ( !( m_bPassed & _PASSED_1 ) ) {
+			bResult = DoPass1();
+		}
+	}
+	if ( bResult ) {
+		wsprintf( tsz, _T( "Export project to file : %s ... \r\n" ), ptszFilename );
+		AddMessage( tsz );
+		hFile = CreateFile( ptszFilename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
+		if ( hFile == INVALID_HANDLE_VALUE ) {
+			hFile = nullptr;
+			AddMessage( _T( "\r\n" ) );
+			DispError();
+			bResult = FALSE;
 		}
 		if ( bResult ) {
-			if ( m_pAttrHandler ) {
-				bResult = m_pAttrHandler->ExportDataAttrs( hFile );
+			wsprintf( tsz, _T( "BinFile : %s\r\n" ), m_tszBinPath );
+			dwWrite = (DWORD)_tcslen( tsz ) * sizeof( TCHAR );
+			WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL );
+			if ( dwWrite != dwWritten ) {
+				AddMessage( _T( "ng\r\n" ) );
+				DispError();
+				bResult = FALSE;
 			}
 		}
-	} else {
-		DispError();
+		if ( bResult ) {
+			wsprintf( tsz, _T( "ORG : $%04X\r\n" ), m_dwStartAddress );
+			dwWrite = (DWORD)_tcslen( tsz ) * sizeof( TCHAR );
+			WriteFile( hFile, tsz, dwWrite, &dwWritten, NULL );
+			if ( dwWrite != dwWritten ) {
+				AddMessage( _T( "ng\r\n" ) );
+				DispError();
+				bResult = FALSE;
+			}
+		}
+		if ( bResult ) {
+			if ( m_pLabelHandler ) {
+				AddMessage( _T( "Export labels ... ") );
+				bResult = m_pLabelHandler->ExportToStream( hFile );
+				if ( bResult )
+					AddMessage( _T( "ok\r\n" ) );
+				else
+					AddMessage( _T( "ng\r\n" ) );
+			}
+			if ( bResult ) {
+				if ( m_pAttrHandler ) {
+					AddMessage( _T( "Export data attributes ... ") );
+					bResult = m_pAttrHandler->ExportDataAttrs( hFile );
+					if ( bResult )
+						AddMessage( _T( "ok\r\n" ) );
+					else
+						AddMessage( _T( "ng\r\n" ) );
+				}
+			}
+		} else {
+			AddMessage( _T( "ng\r\n" ) );
+			DispError();
+		}
+		if ( hFile )
+			CloseHandle( hFile );
 	}
-	CloseHandle( hFile );
 
 	return bResult;
 }
@@ -1676,13 +1805,29 @@ HANDLE hFile;
 BOOL CDisasm6801::ImportProject( PTSTR ptszFilename )
 {
 BOOL bResult = FALSE;
+TCHAR tsz[ MAX_PATH * 3 ];
 PCHAR pBuffer = nullptr;
 DWORD dwSizeLo, dwSizeHi, dwRead;
 HANDLE hFile;
 HGLOBAL hGlobal = nullptr;
 
+	if ( !ptszFilename )
+		return bResult;
+	if ( !m_pAttrHandler ) {
+		AddMessage( _T( "Internal Error\r\n" ) );
+	}
+	if ( !m_pLabelHandler ) {
+		AddMessage( _T( "Internal Error\r\n" ) );
+	}
+	if ( !_tcslen( ptszFilename ) ) {
+		AddMessage( _T( "Target file not specified\r\n" ) );
+		return bResult;
+	}
+	wsprintf( tsz, _T( "Import project file : %s ... " ), ptszFilename );
+	AddMessage( tsz );
 	hFile = CreateFile( ptszFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
 	if ( hFile == INVALID_HANDLE_VALUE ) {
+		AddMessage( _T( "\r\n" ) );
 		DispError();
 		return bResult;
 	}
@@ -1704,33 +1849,70 @@ HGLOBAL hGlobal = nullptr;
 	if ( pBuffer ) {
 		ReadFile( hFile, pBuffer, dwSizeLo, &dwRead, NULL );
 		if ( dwRead == dwSizeLo ) {
-			bResult = TRUE;
-
+			AddMessage( _T( "read ok\r\n") );
+			m_pAttrHandler->Init();
+			m_pLabelHandler->Init();
+			m_bPassed = _PASSED_0;
 			if ( m_pAttrHandler ) {
-				m_pAttrHandler->ImportDataAttrs( pBuffer );
+				AddMessage( _T( "Import data attributes ... ") );
+				bResult = m_pAttrHandler->ImportDataAttrs( pBuffer );
+				if ( bResult ) {
+					AddMessage( _T( "ok\r\n" ) );
+					m_bPassed |= _PASSED_1;
+				} else {
+					AddMessage( _T( "ng\r\n" ) );
+				}
 			}
-			if ( m_pLabelHandler ) {
-				m_pLabelHandler->ImportFromBuffer( pBuffer );
+			if ( bResult ) {
+				AddMessage( _T( "Import labels ... ") );
+				if ( m_pLabelHandler ) {
+					bResult = m_pLabelHandler->ImportFromBuffer( pBuffer );
+					if ( bResult ) {
+						AddMessage( _T( "ok\r\n" ) );
+						m_bPassed |= _PASSED_1;
+					} else {
+						AddMessage( _T( "ng\r\n" ) );
+					}
+				}
 			}
+		} else {
+			AddMessage( _T( "read ng\r\n" ) );
 		}
 		GlobalUnlock( hGlobal );
+	} else {
+		AddMessage( _T( "Insufficient memory\r\n" ) );
 	}
 	CloseHandle( hFile );
 
 	if ( hGlobal )
 		GlobalFree( hGlobal );
+	AddMessage( _T( "\r\n" ) );
+
 	return bResult;
 }
 
 BOOL CDisasm6801::ExportCrossReferenceTable( PTSTR ptszFilename )
 {
 BOOL bResult = FALSE, btmpView;
+TCHAR tsz[ MAX_PATH * 3 ];
 HANDLE hFile;
 
-	if ( !m_pLabelHandler )
+	if ( !ptszFilename )
 		return bResult;
+	if ( !_tcslen( ptszFilename ) ) {
+		AddMessage( _T( "Target file not specified\r\n" ) );
+		return bResult;
+	}
+
+	if ( !m_pLabelHandler ) {
+		AddMessage( _T( "Internal ereor\r\n" ) );
+		return bResult;
+	}
+	wsprintf( tsz, _T( "Make crosserference to file : %s ... " ), ptszFilename );
+	AddMessage( tsz );
 	hFile = CreateFile( ptszFilename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
 	if ( hFile == INVALID_HANDLE_VALUE ) {
+		AddMessage( _T( "ng\r\n" ) );
 		DispError();
 		return bResult;
 	}
@@ -1742,7 +1924,12 @@ HANDLE hFile;
 	CloseWriteFileHandle( hFile );
 	SetWriteFileHandle( nullptr );
 	if ( !GetFileWriteError( TRUE ) )
-		bResult = FALSE;
+		bResult = TRUE;
+	if ( bResult ) {
+		AddMessage( _T( "ok\r\n" ) );
+	} else {
+		AddMessage( _T( "ng\r\n" ) );
+	}
 	return bResult;
 }
 
@@ -1773,6 +1960,7 @@ VOID CDisasm6801::Init( VOID )
 	m_bViewAsDB = FALSE;
 	m_bViewAsDW = FALSE;
 	m_bViewAsDC = FALSE;
+	m_bUse6801Vector = TRUE;
 // for dump
 	m_bDumpViewAddress = TRUE;
 	m_bDumpViewAddressSepareter = 2; // 0 : none, 1 : space, 2 : space 2, 3 : space 3, 4 : with solon, 5 : space with colon

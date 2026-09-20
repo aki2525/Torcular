@@ -3,7 +3,7 @@
 #include "framework.h"
 #include "resource.h"
 
-VOID AddMessage( PTSTR ptszStr );
+VOID AddMessage( PCTSTR pctszStr );
 VOID WriteString( PTSTR ptszStr );
 BOOL CutLastSpace( PTSTR ptszStr, INT iSize );
 BOOL ConvertToUseTab( PTSTR ptszStr, UINT uiSizeTab );

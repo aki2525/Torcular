@@ -19,9 +19,10 @@
 #define _VIEW_DUMP_LEN_BINARYDUMP ( 3 * 16 )
 
 enum {
-	_PASSED_NONE,
-	_PASSED_1 = 0x8000, // processed pass 1
-	_PASSED_2 = 0x4000 // processed pass 2
+	_PASSED_NONE = 0,
+	_PASSED_0 = 0x8000,
+	_PASSED_1 = 0x4000, // processed pass 1
+	_PASSED_2 = 0x2000 // processed pass 2
 };
 
 enum AddressingMode {
@@ -185,6 +186,7 @@ public:
 	BOOL SetBinFile( PTSTR ptBinFile );
 	BOOL ReadBinFile( VOID );
 	BOOL ReadLabelFile( VOID );
+	BOOL DoPass0( VOID );
 	BOOL DoPass1( VOID );
 	BOOL CreateAsmFile( VOID );
 	BOOL DoPass2( VOID );
@@ -221,7 +223,7 @@ public:
 	BOOL MakeCrossReference( PTSTR ptszFilename );
 	VOID RegisterVector( PBYTE pbyData, DWORD dwBaseAddr, DWORD dwVectorAddr, PCTSTR pctszVectorName = nullptr, PCTSTR pctszComment = nullptr );
 	BOOL PrepareMakeCrossReference();
-	BOOL PrepareExportProject();
+//	BOOL PrepareExportProject();
 //
 	PCTSTR GetMnemonicStr( MnemonicID Id );
 	CLabelHandler* m_pLabelHandler;
@@ -248,6 +250,7 @@ private:
 	BOOL m_bViewAsDB;
 	BOOL m_bViewAsDW;
 	BOOL m_bViewAsDC;
+	BOOL m_bUse6801Vector;
 // dump mode / options
 	BOOL m_bDumpViewAddress;
 	BOOL m_bDumpViewAddressSepareter; // 0 : none, 1 : space, 2 : space 2, 3 : space 3, 4 : with solon, 5 : space with colon
