@@ -39,6 +39,7 @@ BOOL MakeCrossReference( HWND hwnd );
 BOOL MakeDump( HWND hwnd );
 BOOL ImportProjectFile( HWND hwnd );
 BOOL ExportProjectFile( HWND hwnd );
+DWORD GetValA( PTSTR ptszVal );
 BOOL ChooseViewFont( HWND hwnd, HWND hView );
 
 COMDLG_FILTERSPEC fpProjTypes[] = {
@@ -479,41 +480,121 @@ LPVOID pMsgBuf;
 	LocalFree( pMsgBuf );
 }
 
-//BOOL ExportDataAttrs( HANDLE hFile )
-//{
-//BOOL bResult = FALSE;
-//
-//	if ( g_pThis ) {
-//		if ( g_pThis->m_pAttrHandler ) {
-//			bResult = g_pThis->m_pAttrHandler->ExportDataAttrs( hFile );
-//		}
-//	}
-//	return bResult;
-//}
-//
-//BOOL ImportDataAttrs( PCHAR pBuffer )
-//{
-//BOOL bResult = FALSE;
-//
-//	if ( pBuffer ) {
-//		if ( g_pThis ) {
-//			if ( g_pThis->m_pAttrHandler ) {
-//				bResult = g_pThis->m_pAttrHandler->ImportDataAttrs( pBuffer );
-//			}
-//		}
-//	}
-//	return bResult;
-//}
+class CDialogEventHandler : public IFileDialogEvents, public IFileDialogControlEvents
+{
+private:
+	LONG m_cRef;
+	BOOL m_bAutoAddress;
+
+public:
+	CDialogEventHandler() : m_cRef( 1 ), m_bAutoAddress( FALSE ) {}
+
+	IFACEMETHODIMP QueryInterface( REFIID riid, void** ppv ) {
+	static const QITAB qit[] = {
+		QITABENT( CDialogEventHandler, IFileDialogEvents ),
+		QITABENT( CDialogEventHandler, IFileDialogControlEvents ),
+		{ 0 },
+	};
+		return QISearch( this, qit, riid, ppv );
+	}
+	IFACEMETHODIMP_(ULONG) AddRef() { return InterlockedIncrement( &m_cRef ); }
+	IFACEMETHODIMP_(ULONG) Release() {
+	LONG cRef;
+	
+		cRef = InterlockedDecrement( &m_cRef );
+		if ( cRef == 0 )
+			delete this;
+		return cRef;
+	}
+
+	IFACEMETHODIMP OnFileOk( IFileDialog* pfd );
+	IFACEMETHODIMP OnFolderChanging( IFileDialog* pfd, IShellItem* ) { return S_OK; }
+	IFACEMETHODIMP OnFolderChange( IFileDialog* pfd ) { return S_OK; }
+	IFACEMETHODIMP OnSelectionChange( IFileDialog* pfd ) { return S_OK; }
+	IFACEMETHODIMP OnShareViolation( IFileDialog* pfd, IShellItem* psi, FDE_SHAREVIOLATION_RESPONSE* pResponse ) { return S_OK; }
+	IFACEMETHODIMP OnTypeChange( IFileDialog* pfd ) { return S_OK; }
+	IFACEMETHODIMP OnOverwrite( IFileDialog* pfd, IShellItem* psi, FDE_OVERWRITE_RESPONSE* pResponse ) { return S_OK; }
+
+	IFACEMETHODIMP OnItemSelected( IFileDialogCustomize *pCustomize, DWORD dwIDCtl, DWORD dwIDItem );
+    
+	IFACEMETHODIMP OnButtonClicked( IFileDialogCustomize* pfdc, DWORD dwIDCtl ) { return S_OK; }
+	IFACEMETHODIMP OnCheckButtonToggled( IFileDialogCustomize* pfdc, DWORD dwIDCtl, BOOL bChecked ) { return S_OK; }
+	IFACEMETHODIMP OnControlActivating( IFileDialogCustomize* pfdc, DWORD dwIDCtl ) { return S_OK; }
+
+	BOOL GetAutoAddress( VOID ) { return m_bAutoAddress; }
+};
+
+IFACEMETHODIMP CDialogEventHandler::OnItemSelected( IFileDialogCustomize *pCustomize, DWORD dwIDCtl, DWORD dwIDItem )
+{
+	if ( dwIDCtl == IDC_RADIO_GROUP ) {
+		if ( dwIDItem == IDC_RADIO_B ) {
+			pCustomize->SetControlState( IDC_LABEL_ADDRESS, CDCS_VISIBLE | CDCS_ENABLED );
+			pCustomize->SetControlState( IDC_EDIT_STARTADDRESS, CDCS_VISIBLE | CDCS_ENABLED );
+		} else {
+			pCustomize->SetControlState( IDC_LABEL_ADDRESS, CDCS_INACTIVE );
+			pCustomize->SetControlState( IDC_EDIT_STARTADDRESS, CDCS_INACTIVE );
+		}
+	}
+	return S_OK;
+}
+
+IFACEMETHODIMP CDialogEventHandler::OnFileOk(IFileDialog* pDialog)
+{
+INT iRet;
+BOOL bSw;
+TCHAR tsz[ MAX_PATH ];
+DWORD dwSelectedItemID = 0, dwVal;
+PWCHAR pwszEdit = nullptr;
+HRESULT hr;
+IFileDialogCustomize* pCustomize = nullptr;
+
+	hr = pDialog->QueryInterface( IID_PPV_ARGS( &pCustomize ) );
+	if ( SUCCEEDED( hr ) ) {
+		pCustomize->GetCheckButtonState( IDC_USE_INTERNAL_IO, &bSw );
+		g_pThis->SetUse6801IO( bSw );
+		hr = pCustomize->GetSelectedControlItem( IDC_RADIO_GROUP, &dwSelectedItemID );
+		if ( SUCCEEDED( hr ) ) {
+			switch( dwSelectedItemID ) {
+			case IDC_RADIO_A:
+				g_pThis->SetStartAddress( 0 );
+				m_bAutoAddress = TRUE;
+				break;
+			case IDC_RADIO_B:
+				hr = pCustomize->GetEditBoxText( IDC_EDIT_STARTADDRESS, &pwszEdit );
+				if ( SUCCEEDED( hr ) ) {
+					if ( pwszEdit ) {
+#ifndef _UNICODE
+						iRet = WideCharToMultiByte( CP_ACP, 0, pwszEdit, -1, tsz, sizeof( tsz ), NULL, NULL );
+#else
+						_tcscpy( tsz, pwszEdit );
+#endif
+						CoTaskMemFree( pwszEdit );
+						dwVal = GetValA( tsz );
+						g_pThis->SetStartAddress( dwVal );
+						m_bAutoAddress = FALSE;
+					}
+				}
+				break;
+			}
+		}
+		pCustomize->Release();
+	}
+	return S_OK;
+}
 
 BOOL OpenBinaryFile( HWND hwnd )
 {
 INT iRet;
 BOOL bResult = FALSE;
 TCHAR tszPath[ MAX_PATH ];
-PWSTR pwszFilePath = NULL;
+WCHAR wsz[ MAX_PATH ];
+DWORD dwVal, dwCookie = 0, dwSelectedItemID = 0;
+PWSTR pwszFilePath = nullptr;
 HRESULT hr;
-IShellItem* pItem = NULL;
-IFileOpenDialog* pFileOpen = NULL;
+IShellItem* pItem = nullptr;
+IFileOpenDialog* pFileOpen = nullptr;
+CDialogEventHandler* pHandler = nullptr;
+IFileDialogCustomize* pCustomize = nullptr;
 
 	if ( !g_pThis )
 		return bResult;
@@ -525,24 +606,49 @@ IFileOpenDialog* pFileOpen = NULL;
 		pFileOpen->SetFileTypes( _countof( fpBinTypes ), fpBinTypes );
 		pFileOpen->SetFileTypeIndex( 1 );
 		pFileOpen->SetTitle( L" Open binary file" );
-		hr = pFileOpen->Show( hwnd );
+		hr = pFileOpen->QueryInterface( IID_PPV_ARGS( &pCustomize ) );
 		if ( SUCCEEDED( hr ) ) {
-			hr = pFileOpen->GetResult( &pItem );
+			pCustomize->AddCheckButton( IDC_USE_INTERNAL_IO, L"Use internal I/O and control registers", g_pThis->GetUse6801IO() );
+//
+			pCustomize->StartVisualGroup( IDC_VISUAL_GROUP, L"Address : " );
+			pCustomize->AddRadioButtonList( IDC_RADIO_GROUP );
+			pCustomize->AddControlItem( IDC_RADIO_GROUP, IDC_RADIO_A, L"Auto(Load to higher address)" );
+			pCustomize->AddControlItem( IDC_RADIO_GROUP, IDC_RADIO_B, L"Set" );
+			pCustomize->SetSelectedControlItem( IDC_RADIO_GROUP, IDC_RADIO_A );
+			pCustomize->AddText( IDC_LABEL_ADDRESS, L"   Address : " );
+			wsprintfW( wsz, L"$%04X", g_pThis->GetStartAddress() );
+			pCustomize->AddEditBox( IDC_EDIT_STARTADDRESS, wsz );
+			pCustomize->SetControlState( IDC_LABEL_ADDRESS, CDCS_INACTIVE );
+			pCustomize->SetControlState( IDC_EDIT_STARTADDRESS, CDCS_INACTIVE );
+			pCustomize->EndVisualGroup();
+			pCustomize->Release();
+//
+			hr = S_FALSE;
+			pHandler = new CDialogEventHandler();
+			if ( pHandler )
+				hr = pFileOpen->Advise( pHandler, &dwCookie );
 			if ( SUCCEEDED( hr ) ) {
-				hr = pItem->GetDisplayName( SIGDN_FILESYSPATH, &pwszFilePath );
+				hr = pFileOpen->Show( hwnd );
 				if ( SUCCEEDED( hr ) ) {
+					hr = pFileOpen->GetResult( &pItem );
+					if ( SUCCEEDED( hr ) ) {
+						hr = pItem->GetDisplayName( SIGDN_FILESYSPATH, &pwszFilePath );
+						if ( SUCCEEDED( hr ) ) {
 #ifndef _UNICODE
-					iRet = WideCharToMultiByte( CP_ACP, 0, pwszFilePath, -1, tszPath, sizeof( tszPath ), NULL, NULL );
-					if ( iRet > 0 ) {
-						bResult = TRUE;
-					}
+							iRet = WideCharToMultiByte( CP_ACP, 0, pwszFilePath, -1, tszPath, sizeof( tszPath ), NULL, NULL );
+							if ( iRet > 0 ) {
+								bResult = TRUE;
+							}
 #else
-					_tcscpy( tszPath, pwszFilePath );
-					bResult = TRUE;
+							_tcscpy( tszPath, pwszFilePath );
+							bResult = TRUE;
 #endif
-					CoTaskMemFree( pwszFilePath );
+							CoTaskMemFree( pwszFilePath );
+						}
+						pItem->Release();
+					}
 				}
-				pItem->Release();
+				hr = pFileOpen->Unadvise( dwCookie );
 			}
 		}
 		pFileOpen->Release();
@@ -551,7 +657,16 @@ IFileOpenDialog* pFileOpen = NULL;
 		bResult = g_pThis->SetBinFile( tszPath );
 		if ( bResult )
 			bResult = g_pThis->ReadBinFile();
+		if ( bResult ) {
+			if ( pHandler->GetAutoAddress() ) {
+				dwVal = 0x10000;
+				dwVal -= g_pThis->GetBinarySize();
+				g_pThis->SetStartAddress( dwVal );
+			}
+		}
 	}
+	if ( pHandler )
+		delete pHandler;
 	return bResult;
 }
 
@@ -560,9 +675,10 @@ BOOL MakeDisassemble( HWND hwnd )
 INT iRet;
 UINT uiTab;
 BOOL bResult = FALSE, bSw;
-DWORD dwIdxSelect = 0;
+DWORD dwIdxSelect = 0, dwVal;
 TCHAR tsz[ MAX_PATH * 3 ], tszPath[ MAX_PATH ];
-PWSTR pszFilePath = nullptr;
+WCHAR wsz[ MAX_PATH ];
+PWSTR pszFilePath = nullptr, pwszEdit = nullptr;
 HANDLE hFile;
 HRESULT hr;
 IShellItem* pItem;
@@ -596,7 +712,9 @@ IFileDialogCustomize *pCustomize = nullptr;
 //
 			pCustomize->StartVisualGroup( IDC_GROUP_ADDRESS, L"" );
 			pCustomize->AddText( IDC_START_ADDRESS_CAPTION, L"Start Address : " );
-			pCustomize->AddEditBox( IDC_START_ADDRESS, L"F000" );
+			wsprintfW( wsz, L"%04X", g_pThis->GetStartAddress() );
+			pCustomize->AddEditBox( IDC_START_ADDRESS, wsz );
+			pCustomize->SetControlState( IDC_START_ADDRESS, CDCS_VISIBLE ); // to read only
 			pCustomize->EndVisualGroup();
 //
 			pCustomize->StartVisualGroup( IDC_GROUP_TAB, L"" );
@@ -629,40 +747,54 @@ IFileDialogCustomize *pCustomize = nullptr;
 					bResult = TRUE;
 #endif
 					CoTaskMemFree( pszFilePath );
-					pItem->Release();
-				}
-				pFileSave->QueryInterface( IID_PPV_ARGS( &pCustomize ) );
-				if ( pCustomize ) {
-					pCustomize->GetCheckButtonState( IDC_VIEW_ADDRESS, &bSw );
-					g_pThis->SetViewAddress( bSw );
-					pCustomize->GetCheckButtonState( IDC_VIEW_MACHINECODE, &bSw );
-					g_pThis->SetViewMachineCode( bSw );
-					pCustomize->GetCheckButtonState( IDC_VIEW_COMMENT_LABEL, &bSw );
-					g_pThis->SetViewLabelComment( bSw );
-					pCustomize->GetCheckButtonState( IDC_VIEW_COMMENT_EQU, &bSw );
-					g_pThis->SetViewEquComment( bSw );
-					pCustomize->GetCheckButtonState( IDC_VIEW_COLON_LABEL, &bSw );
-					g_pThis->SetViewLabelColon( bSw );
-					pCustomize->GetCheckButtonState( IDC_VIEW_REFERENCEDFROM, &bSw );
-					g_pThis->SetViewReferencedFrom( bSw );
-					pCustomize->GetCheckButtonState( IDC_VIEW_USE_DB, &bSw );
-					g_pThis->SetViewAsDB( bSw );
-					pCustomize->GetCheckButtonState( IDC_VIEW_USE_DC, &bSw );
-					g_pThis->SetViewAsDC( bSw );
-					pCustomize->GetCheckButtonState( IDC_VIEW_USE_DW, &bSw );
-					g_pThis->SetViewAsDW( bSw );
-
-					pCustomize->GetSelectedControlItem( IDC_TAB_SIZE, &dwIdxSelect );
-					switch( dwIdxSelect ) {
-					case 0:
-						g_pThis->SetTab( 4 );
-						break;
-					//case 1:
-					default:
-						g_pThis->SetTab( 8 );
-						break;
+					hr = pFileSave->QueryInterface( IID_PPV_ARGS( &pCustomize ) );
+					if ( SUCCEEDED( hr ) ) {
+						pCustomize->GetCheckButtonState( IDC_VIEW_ADDRESS, &bSw );
+						g_pThis->SetViewAddress( bSw );
+						pCustomize->GetCheckButtonState( IDC_VIEW_MACHINECODE, &bSw );
+						g_pThis->SetViewMachineCode( bSw );
+						pCustomize->GetCheckButtonState( IDC_VIEW_COMMENT_LABEL, &bSw );
+						g_pThis->SetViewLabelComment( bSw );
+						pCustomize->GetCheckButtonState( IDC_VIEW_COMMENT_EQU, &bSw );
+						g_pThis->SetViewEquComment( bSw );
+						pCustomize->GetCheckButtonState( IDC_VIEW_COLON_LABEL, &bSw );
+						g_pThis->SetViewLabelColon( bSw );
+						pCustomize->GetCheckButtonState( IDC_VIEW_REFERENCEDFROM, &bSw );
+						g_pThis->SetViewReferencedFrom( bSw );
+						pCustomize->GetCheckButtonState( IDC_VIEW_USE_DB, &bSw );
+						g_pThis->SetViewAsDB( bSw );
+						pCustomize->GetCheckButtonState( IDC_VIEW_USE_DC, &bSw );
+						g_pThis->SetViewAsDC( bSw );
+						pCustomize->GetCheckButtonState( IDC_VIEW_USE_DW, &bSw );
+						g_pThis->SetViewAsDW( bSw );
+//
+						hr = pCustomize->GetEditBoxText( IDC_VIEW_USE_DW, &pwszEdit );
+						if ( SUCCEEDED( hr ) ) {
+							if ( pwszEdit ) {
+#ifndef _UNICODE
+								iRet = WideCharToMultiByte( CP_ACP, 0, pwszEdit, -1, tsz, sizeof( tsz ), NULL, NULL );
+#else
+								_tcscpy( tsz, pwszEdit );
+#endif
+								CoTaskMemFree( pwszEdit );
+								dwVal = GetValA( tsz );
+								g_pThis->SetStartAddress( dwVal );
+							}
+						}
+//
+						pCustomize->GetSelectedControlItem( IDC_TAB_SIZE, &dwIdxSelect );
+						switch( dwIdxSelect ) {
+						case 0:
+							g_pThis->SetTab( 4 );
+							break;
+						//case 1:
+						default:
+							g_pThis->SetTab( 8 );
+							break;
+						}
+						pCustomize->Release();
 					}
-					pCustomize->Release();
+					pItem->Release();
 				}
 			}
 		}
@@ -1000,6 +1132,56 @@ CHARFORMAT2 cf2;
 }
 
 // -----------------------------------------------------------------------------------------------
+DWORD GetValA( PTSTR ptszVal )
+{
+DWORD dwVal = 0;
+
+	while( *ptszVal ) {
+		if ( *ptszVal == 0x20 ) {
+			ptszVal++;
+			continue;
+		}
+		if ( *ptszVal == 0x07 ) {
+			ptszVal++;
+			continue;
+		}
+		break;
+	}
+	if ( *ptszVal == '$' ) {
+		ptszVal++;
+		if ( *ptszVal ) {
+			while( *ptszVal ) {
+				if ( ( *ptszVal >= '0' ) && ( *ptszVal <= '9' ) ) {
+					dwVal *= 16;
+					dwVal += *ptszVal - '0';
+				} else if ( ( *ptszVal >= 'a' ) && ( *ptszVal <= 'f' ) ) {
+					dwVal *= 16;
+					dwVal += *ptszVal - 'a' + 10;
+				} else if ( ( *ptszVal >= 'A' ) && ( *ptszVal <= 'F' ) ) {
+					dwVal *= 16;
+					dwVal += *ptszVal - 'A' + 10;
+				} else {
+					break;
+				}
+				ptszVal++;
+			}
+		}
+	} else {
+		if ( *ptszVal ) {
+			while( *ptszVal ) {
+				if ( ( *ptszVal >= '0' ) && ( *ptszVal <= '9' ) ) {
+					dwVal *= 10;
+					dwVal += *ptszVal - '0';
+				} else {
+					break;
+				}
+				ptszVal++;
+			}
+		}
+	}
+	return dwVal;
+}
+
 PCHAR _WideToAnsi( PWCHAR pwStr )
 {
 INT iLen;

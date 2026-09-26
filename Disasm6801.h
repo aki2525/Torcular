@@ -196,12 +196,17 @@ public:
 	BOOL DoPass2( VOID );
 	UINT GetTab( VOID );
 	VOID SetTab( UINT uiTab ) { m_uiTab = uiTab; }
+	DWORD GetStartAddress( VOID ) { return m_dwStartAddress; }
+	VOID SetStartAddress( DWORD dwStartAddress ) { m_dwStartAddress = dwStartAddress & 0xffff; }
+	DWORD GetUse6801IO( VOID ) { return m_bUse6801Vector; }
+	VOID SetUse6801IO( BOOL bSw ) { m_bUse6801Vector = bSw; }
 	BOOL GetViewReferencedFrom( VOID ) { return m_bViewReferencedFrom; }
 	VOID SetViewReferencedFrom( BOOL bSw ) { m_bViewReferencedFrom = bSw; }
 	BOOL GetViewMachineCode( VOID ) { return m_bViewMachineCode; }
 	VOID SetViewMachineCode( BOOL bSw ) { m_bViewMachineCode = bSw; }
 	BOOL GetViewAddress( VOID ) { return m_bViewAddress; }
 	VOID SetViewAddress( BOOL bSw ) { m_bViewAddress = bSw; }
+	DWORD GetBinarySize( VOID ) { return m_dwSizeBin; }
 	BOOL GetViewLabelComment( VOID ) { return m_bViewLabelComment; }
 	VOID SetViewLabelComment( BOOL bSw ) { m_bViewLabelComment = bSw; }
 	BOOL GetViewEquComment( VOID ) { return m_bViewEquComment; }

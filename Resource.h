@@ -28,7 +28,15 @@
 #define IDC_VIEW_USE_DB 133
 #define IDC_VIEW_USE_DW 134
 #define IDC_VIEW_USE_DC 135
-#define IDR_MAINFRAME                   140
+#define IDC_USE_INTERNAL_IO 136
+#define IDC_VISUAL_GROUP 140
+#define IDC_RADIO_GROUP 141
+#define IDC_RADIO_A 150
+#define IDC_RADIO_B 160
+#define IDC_LABEL_ADDRESS 170
+#define IDC_EDIT_STARTADDRESS 171
+#define IDR_MAINFRAME                   200
+
 #define IDM_HERE_WE_GO                  5000
 #define IDM_OPEN_BINFILE 32771
 #define IDM_MAKE_DISASMFILE 32772
