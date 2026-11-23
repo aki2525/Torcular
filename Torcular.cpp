@@ -1265,8 +1265,8 @@ BOOL bUsage = FALSE;
 	if ( !pArgvW )
 		return 0;
 
-	if ( iArgcW < 2 )
-		bUsage = TRUE;
+	//if ( iArgcW < 2 )
+	//	bUsage = TRUE;
 
 	pArgvA = (PCHAR*)malloc( sizeof( PCHAR ) * iArgcW );
 	for ( i = 0; i < iArgcW; ++i ) {
